@@ -31,7 +31,6 @@ DEFAULT_CONFIG = {
     'kcc_gamma': 'auto'
 }
 
-# In-memory set to prevent duplicate processing
 PROCESSING_LOCKS = set()
 
 def load_config():
@@ -209,7 +208,6 @@ def index():
         config['kcc_cropping'] = request.form.get('kcc_cropping', '2')
         config['kcc_splitter'] = request.form.get('kcc_splitter', '2')
         config['kcc_gamma'] = request.form.get('kcc_gamma', 'auto')
-        
         config['kcc_manga_style'] = 'kcc_manga_style' in request.form
         config['kcc_hq'] = 'kcc_hq' in request.form
         config['kcc_stretch'] = 'kcc_stretch' in request.form
@@ -218,7 +216,6 @@ def index():
         config['kcc_colorautocontrast'] = 'kcc_colorautocontrast' in request.form
         config['kcc_upscale'] = 'kcc_upscale' in request.form
         config['kcc_metadatatitle'] = 'kcc_metadatatitle' in request.form
-        
         save_config(config)
         saved = True
     return render_template_string(HTML_TEMPLATE, config=config, saved=saved)
@@ -231,73 +228,43 @@ def wait_for_file_ready(filepath):
             if current_size > 0 and current_size == last_size:
                 return True
             last_size = current_size
-        except OSError:
-            pass
+        except OSError: pass
         time.sleep(2)
     return False
 
 def get_newest_file(directory):
     files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-    if not files:
-        return None
-    return max(files, key=os.path.getmtime)
+    return max(files, key=os.path.getmtime) if files else None
 
 def handle_output_renaming(produced_file, target_dir, original_input):
-    if not produced_file:
-        return False
-        
+    if not produced_file: return False
     filename = os.path.basename(produced_file)
-    # Ensure .kepub.epub and .epub normalize to .kepub per requirements
-    if filename.endswith('.kepub.epub'):
-        filename = filename[:-11] + '.kepub'
-    elif filename.endswith('.epub'):
-        filename = filename[:-5] + '.kepub'
-        
+    if filename.endswith('.kepub.epub'): filename = filename[:-11] + '.kepub'
+    elif filename.endswith('.epub'): filename = filename[:-5] + '.kepub'
     final_path = os.path.join(target_dir, filename)
     os.makedirs(target_dir, exist_ok=True)
-    
     shutil.move(produced_file, final_path)
     os.remove(original_input)
     return True
 
 def process_file(filepath, c_type):
-    if filepath in PROCESSING_LOCKS:
-        return
-        
+    if filepath in PROCESSING_LOCKS: return
     PROCESSING_LOCKS.add(filepath)
     try:
-        if not wait_for_file_ready(filepath):
-            print(f"File {filepath} did not stabilize in time, skipping.")
-            return
-
+        if not wait_for_file_ready(filepath): return
         config = load_config()
-        
         rel_dir = os.path.dirname(os.path.relpath(filepath, BOOKS_IN if c_type == 'book' else COMICS_IN))
-        if rel_dir == '.':
-            rel_dir = ''
-            
+        if rel_dir == '.': rel_dir = ''
         out_base = BOOKS_OUT if c_type == 'book' else COMICS_OUT
         target_dir = os.path.join(out_base, rel_dir)
-        
         temp_out = os.path.join('/tmp', os.path.basename(filepath) + '_out')
         os.makedirs(temp_out, exist_ok=True)
-        
-        # Pass-through logic for already converted files
-        lower_path = filepath.lower()
-        if c_type == 'book' and (lower_path.endswith('.kepub.epub') or lower_path.endswith('.kepub')):
-            print(f"Pass-through detected: {filepath}", flush=True)
-            handle_output_renaming(filepath, target_dir, filepath)
-            return
-
         if c_type == 'book':
-            print(f"Running Kepubify on {filepath}", flush=True)
             cmd = ['kepubify', '--calibre', '--inplace', '--output', temp_out, filepath]
             result = subprocess.run(cmd, capture_output=True, text=True)
         else:
-            print(f"Running KCC on {filepath}", flush=True)
             cmd = ['kcc-c2e', '--profile', config['kcc_profile'], '--format', config['kcc_format'], 
                    '--splitter', config['kcc_splitter'], '--cropping', config['kcc_cropping'], '--output', temp_out]
-            
             if config['kcc_manga_style']: cmd.append('-m')
             if config['kcc_hq']: cmd.append('-q')
             if config['kcc_stretch']: cmd.append('--stretch')
@@ -308,40 +275,28 @@ def process_file(filepath, c_type):
             if config['kcc_metadatatitle']: cmd.append('--metadatatitle')
             if config['kcc_gamma'] and config['kcc_gamma'].lower() != 'auto':
                 cmd.extend(['--gamma', config['kcc_gamma']])
-                
             cmd.append(filepath)
             result = subprocess.run(cmd, capture_output=True, text=True)
-
         if result.returncode == 0:
             produced = get_newest_file(temp_out)
             if handle_output_renaming(produced, target_dir, filepath):
                 print(f"Successfully processed {filepath}")
         else:
-            print(f"Failed to process {filepath}\nError: {result.stderr}")
+            print(f"Failed to process {filepath}\\nError: {result.stderr}")
             os.rename(filepath, filepath + '.failed')
-            
-        if os.path.exists(temp_out):
-            shutil.rmtree(temp_out)
-
-    except Exception as e:
-        print(f"Exception processing {filepath}: {e}")
-    finally:
-        PROCESSING_LOCKS.remove(filepath)
+        if os.path.exists(temp_out): shutil.rmtree(temp_out)
+    except Exception as e: print(f"Exception processing {filepath}: {e}")
+    finally: PROCESSING_LOCKS.remove(filepath)
 
 def scan_directories():
     for root, _, files in os.walk(BOOKS_IN):
         for f in files:
-            lower_f = f.lower()
-            if (lower_f.endswith('.epub') or lower_f.endswith('.kepub')) and not lower_f.endswith('.failed'):
-                filepath = os.path.join(root, f)
-                threading.Thread(target=process_file, args=(filepath, 'book')).start()
-
+            if (f.lower().endswith('.epub') or f.lower().endswith('.kepub')) and not f.lower().endswith('.failed'):
+                threading.Thread(target=process_file, args=(os.path.join(root, f), 'book')).start()
     for root, _, files in os.walk(COMICS_IN):
         for f in files:
-            lower_f = f.lower()
-            if (lower_f.endswith('.cbz') or lower_f.endswith('.cbr') or lower_f.endswith('.zip') or lower_f.endswith('.rar')) and not lower_f.endswith('.failed'):
-                filepath = os.path.join(root, f)
-                threading.Thread(target=process_file, args=(filepath, 'comic')).start()
+            if (f.lower().endswith('.cbz') or f.lower().endswith('.cbr') or f.lower().endswith('.zip') or f.lower().endswith('.rar')) and not f.lower().endswith('.failed'):
+                threading.Thread(target=process_file, args=(os.path.join(root, f), 'comic')).start()
 
 def watch_loop():
     while True:
