@@ -92,18 +92,68 @@ Run `id` on the host to find your values.
 
 ## KCC Settings
 
+### Device and Output
+
 | Setting | Default | Notes |
 |---------|---------|-------|
 | Device Profile | `KoLC` (Kobo Libra Colour) | Match your exact device for correct resolution |
 | Output Format | `EPUB` | Kobo uses EPUB; Kindle prefers MOBI |
-| Cropping | `2` (Margins + Page numbers) | Removes white borders and page numbers |
-| Splitter | `2` (Right-then-left) | For manga; set to `1` for western comics |
-| Manga Style | off | Enables right-to-left page order |
-| High Quality | off | Slower conversion, marginally better output |
-| Black Borders | on | Fills unused screen area with black |
-| Force Color | on | Preserves color data even on e-ink devices |
-| Auto-Contrast | on | Boosts color image contrast automatically |
-| Use Filename as Title | on | Sets EPUB metadata title from the source filename |
+| Batch Split | `Disabled` | Split input into volumes or chapters |
+
+### Image Processing
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Cropping | `2` (Margins + page numbers) | Removes white borders and page numbers |
+| Cropping Power | `1.0` | Aggressiveness of the crop; higher = more aggressive |
+| Cropping Minimum | `1%` | Minimum percentage to crop before cropping is skipped |
+| Splitter | `1` (Left then right) | How landscape pages are split; use `2` (Right then left) for manga |
+| Gamma | `Auto` | Brightness correction; leave on Auto unless your device needs tuning |
+
+### Page Layout
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Manga Style | off | Enables right-to-left page navigation order |
+| Two Panel | off | Treats landscape pages as two-panel spreads |
+| Webtoon | off | Optimises for vertical-strip webtoon format |
+| Stretch | **on** | Fills the screen, ignoring the original aspect ratio |
+| Upscale | off | Upscales images smaller than the device resolution |
+| No Split / Rotate | off | Disables splitting of landscape pages entirely |
+| Rotate | off | Rotates landscape pages instead of splitting them |
+
+### Borders
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Black Borders | **on** | Fills unused screen area with black |
+| White Borders | off | Fills unused screen area with white (overrides black borders) |
+
+### Color and Quality
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Force Color | **on** | Preserves color data even on grayscale device profiles |
+| Auto-Contrast | **on** | Automatically boosts color image contrast |
+| Color Curve | off | Applies S-curve color correction to images |
+| High Quality | off | Slower processing, marginally better image output |
+
+### Output Metadata
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Use Filename as Title | **on** | Sets EPUB metadata title from the source filename |
+| No KEPUB Extension | off | Outputs `.epub` instead of `.kepub.epub` on Kobo profiles |
+| Author | *(blank)* | Embeds an author name in EPUB metadata; leave blank to use KCC's default |
+
+### Custom Profile Resolution
+
+Only used when the Device Profile is set to **Generic / Custom**.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Custom Width (px) | *(blank)* | e.g. `1264` |
+| Custom Height (px) | *(blank)* | e.g. `1680` |
 
 ---
 
