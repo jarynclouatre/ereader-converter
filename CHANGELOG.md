@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.4.0 — Docker Hub Image
+
+- Bindery is now available as a pre-built image at `dinkeyes/bindery` on Docker Hub — no clone or build step required
+- Added GitHub Actions workflow to automatically build and push images on each release
+- Updated README with Docker Hub quick start and updated compose example
+
 ## v2.3.2 — Housekeeping
 
 - Fixed: WebUI version number was not updated in previous releases
