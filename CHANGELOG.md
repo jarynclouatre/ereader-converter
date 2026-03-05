@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.3.1 — Bug Fix
+
+- Fixed: duplicate files in `comics_out` and `books_out` were silently overwritten — output files are now collision-safe and will be named `file_2.kepub`, `file_3.kepub` etc if a file with the same name already exists
+  
 ## v2.3.0 — Comics Raw Pipeline
 
 - Added `Comics_raw` folder — drop a flat folder of images and Bindery automatically zips it into a CBZ and feeds it into the normal KCC pipeline
