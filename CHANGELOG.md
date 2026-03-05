@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.3.2 — Housekeeping
+
+- Fixed: WebUI version number was not updated in previous releases
+
 ## v2.3.1 — Bug Fix
 
 - Fixed: duplicate files in `comics_out` and `books_out` were silently overwritten — output files are now collision-safe and will be named `file_2.kepub`, `file_3.kepub` etc if a file with the same name already exists
