@@ -4,6 +4,7 @@ import subprocess
 import json
 import shutil
 import threading
+import sys
 from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
@@ -31,7 +32,6 @@ DEFAULT_CONFIG = {
     'kcc_gamma': 'auto'
 }
 
-# Thread lock to prevent double-processing
 PROCESSING_LOCKS = set()
 lock_mutex = threading.Lock()
 
@@ -259,12 +259,10 @@ def process_file(filepath, c_type):
         os.makedirs(temp_out, exist_ok=True)
         
         if c_type == 'book':
-            print(f"Running Kepubify on {filepath}", flush=True)
+            print(f">>> STARTING: Kepubify on {os.path.basename(filepath)}", flush=True)
             cmd = ['kepubify', '--calibre', '--inplace', '--output', temp_out, filepath]
-            result = subprocess.run(cmd, capture_output=True, text=True)
         else:
-            print(f"Running KCC on {filepath}", flush=True)
-            # Standard long-form arguments for stability
+            print(f">>> STARTING: KCC on {os.path.basename(filepath)}", flush=True)
             cmd = ['kcc-c2e', '--profile', config['kcc_profile'], '--format', config['kcc_format'], 
                    '--splitter', config['kcc_splitter'], '--cropping', config['kcc_cropping'], '--output', temp_out]
             
@@ -275,27 +273,32 @@ def process_file(filepath, c_type):
             if config['kcc_blackborders']: cmd.append('--blackborders')
             if config['kcc_colorautocontrast']: cmd.append('--colorautocontrast')
             if config['kcc_upscale']: cmd.append('--upscale')
-            if config['kcc_metadatatitle']: cmd.append('--title') # Replaces --metadatatitle which has issues
+            if config['kcc_metadatatitle']: cmd.append('--title')
             if config['kcc_gamma'] and config['kcc_gamma'].lower() != 'auto':
                 cmd.extend(['--gamma', config['kcc_gamma']])
-            
             cmd.append(filepath)
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-        if result.returncode == 0:
+
+        # Execute and stream logs live to terminal
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        for line in process.stdout:
+            sys.stdout.write(f"[{os.path.basename(filepath)[:15]}] {line}")
+            sys.stdout.flush()
+        process.wait()
+
+        if process.returncode == 0:
             produced = get_newest_file(temp_out)
             if handle_output_renaming(produced, target_dir, filepath):
-                print(f"Successfully processed {filepath}", flush=True)
+                print(f">>> SUCCESS: Processed {os.path.basename(filepath)}", flush=True)
         else:
-            print(f"Failed to process {filepath}\\nError: {result.stderr}", flush=True)
+            print(f">>> FAILED: {os.path.basename(filepath)} (Exit {process.returncode})", flush=True)
             if os.path.exists(filepath): os.rename(filepath, filepath + '.failed')
+        
         if os.path.exists(temp_out): shutil.rmtree(temp_out)
-    except Exception as e: print(f"Exception processing {filepath}: {e}", flush=True)
+    except Exception as e: print(f">>> ERROR: {e}", flush=True)
     finally:
         with lock_mutex: PROCESSING_LOCKS.remove(filepath)
 
 def scan_directories():
-    # SCAN BOOKS
     for root, _, files in os.walk(BOOKS_IN):
         for f in files:
             path = os.path.join(root, f)
@@ -304,7 +307,7 @@ def scan_directories():
                     if path not in PROCESSING_LOCKS:
                         PROCESSING_LOCKS.add(path)
                         threading.Thread(target=process_file, args=(path, 'book')).start()
-    # SCAN COMICS
+
     for root, _, files in os.walk(COMICS_IN):
         for f in files:
             path = os.path.join(root, f)
