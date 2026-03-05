@@ -57,11 +57,13 @@ HTML_TEMPLATE = """
 <html>
 <head>
     <title>E-Reader Converter Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #1e1e1e; color: #f0f0f0; }
         .container { background: #2d2d2d; padding: 30px; border-radius: 8px; max-width: 800px; margin: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         h2, h3 { color: #4da6ff; border-bottom: 1px solid #444; padding-bottom: 10px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
         .group { display: flex; flex-direction: column; margin-bottom: 15px; }
         .checkbox-group { display: flex; align-items: center; margin-bottom: 15px; }
         .checkbox-group label { margin-left: 10px; margin-bottom: 0; }
@@ -70,6 +72,8 @@ HTML_TEMPLATE = """
         input[type="submit"] { background: #4da6ff; color: #111; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 20px; }
         input[type="submit"]:hover { background: #3388dd; }
         .alert { padding: 10px; background: #28a745; color: white; border-radius: 4px; margin-bottom: 20px; }
+        optgroup { font-weight: bold; color: #4da6ff; background: #222; }
+        option { color: #fff; background: #333; }
     </style>
 </head>
 <body>
@@ -85,17 +89,41 @@ HTML_TEMPLATE = """
                     <div class="group">
                         <label>Profile Device</label>
                         <select name="kcc_profile">
-                            <option value="KPW" {% if config.kcc_profile == 'KPW' %}selected{% endif %}>Kindle Paperwhite 1/2</option>
-                            <option value="KPW3" {% if config.kcc_profile == 'KPW3' %}selected{% endif %}>Kindle Paperwhite 3/4</option>
-                            <option value="KPW5" {% if config.kcc_profile == 'KPW5' %}selected{% endif %}>Kindle Paperwhite 5</option>
-                            <option value="KV" {% if config.kcc_profile == 'KV' %}selected{% endif %}>Kindle Voyage</option>
-                            <option value="KO" {% if config.kcc_profile == 'KO' %}selected{% endif %}>Kindle Oasis</option>
-                            <option value="KoGHD" {% if config.kcc_profile == 'KoGHD' %}selected{% endif %}>Kobo Glo HD</option>
-                            <option value="KoA" {% if config.kcc_profile == 'KoA' %}selected{% endif %}>Kobo Aura</option>
-                            <option value="KoF" {% if config.kcc_profile == 'KoF' %}selected{% endif %}>Kobo Forma</option>
-                            <option value="KoLC" {% if config.kcc_profile == 'KoLC' %}selected{% endif %}>Kobo Libra Colour</option>
-                            <option value="KoC" {% if config.kcc_profile == 'KoC' %}selected{% endif %}>Kobo Clara</option>
-                            <option value="OTHER" {% if config.kcc_profile == 'OTHER' %}selected{% endif %}>Other</option>
+                            <optgroup label="Kindle">
+                                <option value="K1" {% if config.kcc_profile == 'K1' %}selected{% endif %}>Kindle 1</option>
+                                <option value="K2" {% if config.kcc_profile == 'K2' %}selected{% endif %}>Kindle 2</option>
+                                <option value="K34" {% if config.kcc_profile == 'K34' %}selected{% endif %}>Kindle Keyboard/Touch</option>
+                                <option value="K578" {% if config.kcc_profile == 'K578' %}selected{% endif %}>Kindle</option>
+                                <option value="KPW" {% if config.kcc_profile == 'KPW' %}selected{% endif %}>Kindle Paperwhite 1/2</option>
+                                <option value="KPW3" {% if config.kcc_profile == 'KPW3' %}selected{% endif %}>Kindle Paperwhite 3/4</option>
+                                <option value="KPW4" {% if config.kcc_profile == 'KPW4' %}selected{% endif %}>Kindle Paperwhite 4</option>
+                                <option value="KPW5" {% if config.kcc_profile == 'KPW5' %}selected{% endif %}>Kindle Paperwhite 5</option>
+                                <option value="KV" {% if config.kcc_profile == 'KV' %}selected{% endif %}>Kindle Voyage</option>
+                                <option value="KO" {% if config.kcc_profile == 'KO' %}selected{% endif %}>Kindle Oasis</option>
+                                <option value="KS" {% if config.kcc_profile == 'KS' %}selected{% endif %}>Kindle Scribe</option>
+                                <option value="KDX" {% if config.kcc_profile == 'KDX' %}selected{% endif %}>Kindle DX/DXG</option>
+                            </optgroup>
+                            <optgroup label="Kobo">
+                                <option value="KoM" {% if config.kcc_profile == 'KoM' %}selected{% endif %}>Kobo Mini</option>
+                                <option value="KoT" {% if config.kcc_profile == 'KoT' %}selected{% endif %}>Kobo Touch</option>
+                                <option value="KoG" {% if config.kcc_profile == 'KoG' %}selected{% endif %}>Kobo Glo</option>
+                                <option value="KoGHD" {% if config.kcc_profile == 'KoGHD' %}selected{% endif %}>Kobo Glo HD</option>
+                                <option value="KoA" {% if config.kcc_profile == 'KoA' %}selected{% endif %}>Kobo Aura</option>
+                                <option value="KoAHD" {% if config.kcc_profile == 'KoAHD' %}selected{% endif %}>Kobo Aura HD</option>
+                                <option value="KoAH2O" {% if config.kcc_profile == 'KoAH2O' %}selected{% endif %}>Kobo Aura H2O</option>
+                                <option value="KoAO" {% if config.kcc_profile == 'KoAO' %}selected{% endif %}>Kobo Aura ONE</option>
+                                <option value="KoF" {% if config.kcc_profile == 'KoF' %}selected{% endif %}>Kobo Forma</option>
+                                <option value="KoC" {% if config.kcc_profile == 'KoC' %}selected{% endif %}>Kobo Clara HD/2E</option>
+                                <option value="KoCE" {% if config.kcc_profile == 'KoCE' %}selected{% endif %}>Kobo Clara Colour</option>
+                                <option value="KoL" {% if config.kcc_profile == 'KoL' %}selected{% endif %}>Kobo Libra H2O/2</option>
+                                <option value="KoLC" {% if config.kcc_profile == 'KoLC' %}selected{% endif %}>Kobo Libra Colour</option>
+                                <option value="KoE" {% if config.kcc_profile == 'KoE' %}selected{% endif %}>Kobo Elipsa</option>
+                                <option value="KoE2" {% if config.kcc_profile == 'KoE2' %}selected{% endif %}>Kobo Elipsa 2E</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="RM" {% if config.kcc_profile == 'RM' %}selected{% endif %}>reMarkable 1/2</option>
+                                <option value="OTHER" {% if config.kcc_profile == 'OTHER' %}selected{% endif %}>Other</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="group">
