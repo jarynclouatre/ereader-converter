@@ -2,9 +2,9 @@
 
 A self-hosted, Dockerized converter that automatically processes e-books and comics dropped into watched folders — no manual steps required.
 
-**For Kobo users:** Converts `.epub` files to Kobo's native `.kepub` format using kepubify, giving you better performance and reading features than sideloaded EPUBs.
+**For Kobo users:** Converts `.epub` files to Kobo's native `.kepub` format using [kepubify](https://github.com/pgaskin/kepubify), giving you better performance and reading features than sideloaded EPUBs.
 
-**For all devices:** Converts comic archives (`.cbz`, `.cbr`, `.zip`, `.rar`) into device-optimised files using Kindle Comic Converter (KCC), with full control over profile, cropping, splitting, gamma, and more.
+**For all devices:** Converts comic archives (`.cbz`, `.cbr`, `.zip`, `.rar`) into device-optimised files using [Kindle Comic Converter (KCC)](https://github.com/ciromattia/kcc), with full control over profile, cropping, splitting, gamma, and more.
 
 All settings are configurable at runtime via a WebUI on port 5000 — no container rebuild needed. Supports `PUID`/`PGID` permission mapping for NAS and multi-user environments. Failed files are flagged and skipped rather than retried in a loop.
 
@@ -18,7 +18,7 @@ All settings are configurable at runtime via a WebUI on port 5000 — no contain
 Bindery fits anywhere in a self-hosted media pipeline. Point the output folders at whatever consumes your files:
 
 - **[Calibre-Web Automated](https://github.com/crocodilestick/Calibre-Web-Automated)** — set `books_out` as the CWA ingest folder and converted `.kepub` files are imported to your library automatically
-- **Calibre auto-add** — point Calibre's Auto Add folder at `books_out` or `comics_out` for hands-free import
+- **[Calibre](https://calibre-ebook.com/) auto-add** — point Calibre's Auto Add folder at `books_out` or `comics_out` for hands-free import
 - **Cloud sync** — use rclone to push converted files to Google Drive, Dropbox, or any cloud storage automatically (see [rclone setup](#rclone-auto-sync) below)
 
 ---
