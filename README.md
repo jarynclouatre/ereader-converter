@@ -149,7 +149,7 @@ Run `id` on the host to find your values.
 | Setting | Default | Notes |
 |---------|---------|-------|
 | Use Filename as Title | **on** | Sets EPUB metadata title from the source filename |
-| No KEPUB Extension | off | Outputs `.epub` instead of `.kepub.epub` on Kobo profiles |
+| No KEPUB Extension | off | Outputs `.epub` instead of `.kepub` on Kobo profiles (KCC outputs `.kepub.epub` by default, which Bindery renames to `.kepub`) |
 | Author | *(blank)* | Embeds an author name in EPUB metadata; leave blank to use KCC's default |
 
 ### Custom Profile Resolution
