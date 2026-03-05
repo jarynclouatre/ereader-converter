@@ -88,14 +88,6 @@ services:
 
 ---
 
-## Permissions (PUID / PGID)
-
-The container starts as root, creates an internal user `abc` with the UID/GID you supply, `chown`s the mapped volumes to that user, then immediately drops privileges via `gosu`. Your files on the host remain owned by your normal user.
-
-Run `id` on the host to find your values.
-
----
-
 ## KCC Settings
 
 ### Device and Output
