@@ -6,7 +6,7 @@ from processor import LOG_BUFFER, log_lock, log, watch_loop
 from raw_processor import raw_watch_loop
 
 app = Flask(__name__)
-VERSION = "2.3.2"
+VERSION = "2.4.0"
 
 
 @app.route('/health')
