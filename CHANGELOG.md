@@ -8,6 +8,8 @@
 - Refactored: `_build_kcc_cmd` extracted from `process_file` in `processor.py` — KCC argument building is now a standalone testable function
 - Added module docstrings to all Python modules
 - Added docstrings to previously undocumented functions
+- Added type hints to all function signatures across `app.py`, `config.py`, `processor.py`, and `raw_processor.py`
+- Added `ConfigDict` type alias in `config.py` for the shared settings dictionary type
 
 ## v2.5.0 — Bug Fixes
 
