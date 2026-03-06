@@ -3,11 +3,14 @@
 import os
 import json
 import threading
+from typing import Any
 
 CONFIG_DIR  = '/app/config'
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'settings.json')
 
-DEFAULT_CONFIG = {
+ConfigDict = dict[str, Any]
+
+DEFAULT_CONFIG: ConfigDict = {
     'kcc_profile':           'KoLC',
     'kcc_manga_style':       False,
     'kcc_hq':                False,
@@ -39,7 +42,7 @@ DEFAULT_CONFIG = {
 _config_lock = threading.Lock()
 
 
-def load_config():
+def load_config() -> ConfigDict:
     """Load settings from disk, filling any missing keys from DEFAULT_CONFIG.
 
     Returns a copy of DEFAULT_CONFIG if the file is absent or unreadable.
@@ -48,7 +51,7 @@ def load_config():
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, 'r') as f:
-                    config = json.load(f)
+                    config: ConfigDict = json.load(f)
                 for k, v in DEFAULT_CONFIG.items():
                     if k not in config:
                         config[k] = v
@@ -58,7 +61,7 @@ def load_config():
         return dict(DEFAULT_CONFIG)
 
 
-def save_config(config):
+def save_config(config: ConfigDict) -> None:
     """Write config to disk atomically via a temp file and os.replace."""
     with _config_lock:
         os.makedirs(CONFIG_DIR, exist_ok=True)
