@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## v2.6.0 — Refactor & Housekeeping
+- Added `requirements.txt` listing production dependencies (Flask, gunicorn, packaging, kcc)
 
 - Fixed: `comics_raw/` added to `.gitignore` to prevent accidentally tracking dropped image files
 - Fixed: `test_processor.py` mock config now imports directly from `config.py` instead of using a stale hardcoded fallback dict

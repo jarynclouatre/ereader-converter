@@ -8,7 +8,6 @@ import zipfile
 import threading
 
 from processor import log
-from config import ConfigDict
 
 COMICS_RAW             = '/Comics_raw'
 COMICS_RAW_PROCESSED   = '/Comics_raw/processed'
