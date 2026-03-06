@@ -3,14 +3,14 @@
 import threading
 from flask import Flask, jsonify, request, render_template
 
-from config import DEFAULT_CONFIG, load_config, save_config
+from config import DEFAULT_CONFIG, load_config, save_config, ConfigDict
 from processor import LOG_BUFFER, log_lock, log, watch_loop
 from raw_processor import raw_watch_loop
 
 VERSION = "2.6.0"
 
 
-def _clamp(value, min_val, max_val, default):
+def _clamp(value: object, min_val: float, max_val: float, default: float) -> str:
     """Parse value as float, clamping to [min_val, max_val]. Returns default on invalid input."""
     try:
         return str(max(min_val, min(max_val, float(value))))
@@ -18,7 +18,7 @@ def _clamp(value, min_val, max_val, default):
         return str(default)
 
 
-def _validate_post(config):
+def _validate_post(config: ConfigDict) -> ConfigDict:
     """Clamp numeric fields to their valid ranges after reading from the form."""
     config['kcc_croppingpower']   = _clamp(config['kcc_croppingpower'],   0.1, 2.0, 1.0)
     config['kcc_croppingminimum'] = _clamp(config['kcc_croppingminimum'],   0,  50,  1)
@@ -32,7 +32,7 @@ def _validate_post(config):
     return config
 
 
-def create_app(start_threads=True):
+def create_app(start_threads: bool = True) -> Flask:
     app = Flask(__name__)
 
     @app.route('/health')
