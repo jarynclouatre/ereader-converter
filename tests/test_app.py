@@ -62,3 +62,79 @@ def test_index_post_persists_profile(client, tmp_path):
         })
         saved = json.loads(config_file.read_text())
     assert saved['kcc_profile'] == 'KoF'
+
+
+def test_api_logs_returns_json(client):
+    resp = client.get('/api/logs')
+    assert resp.status_code == 200
+    data = __import__('json').loads(resp.data)
+    assert 'logs' in data
+    assert isinstance(data['logs'], list)
+
+
+def test_validate_post_clamps_borders_invalid(client, tmp_path):
+    import config as cfg
+    config_file = tmp_path / 'settings.json'
+    with __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
+         __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_DIR', str(tmp_path)):
+        resp = client.post('/', data={
+            'kcc_profile':         'KPW5',
+            'kcc_format':          'EPUB',
+            'kcc_cropping':        '2',
+            'kcc_croppingpower':   '1.0',
+            'kcc_croppingminimum': '1',
+            'kcc_splitter':        '1',
+            'kcc_gamma':           'injected',
+            'kcc_batchsplit':      '0',
+            'kcc_borders':         'purple',
+            'kcc_author':          '',
+            'kcc_customwidth':     '',
+            'kcc_customheight':    '',
+        })
+        assert resp.status_code == 200
+        saved = __import__('json').loads(config_file.read_text())
+    assert saved['kcc_borders'] == 'black'
+    assert saved['kcc_gamma'] == '0'
+
+
+def test_validate_post_clamps_profile_invalid(client, tmp_path):
+    import config as cfg
+    config_file = tmp_path / 'settings.json'
+    with __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
+         __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_DIR', str(tmp_path)):
+        client.post('/', data={
+            'kcc_profile':         'HACKED',
+            'kcc_format':          'DOCX',
+            'kcc_cropping':        '9',
+            'kcc_croppingpower':   '1.0',
+            'kcc_croppingminimum': '1',
+            'kcc_splitter':        '9',
+            'kcc_gamma':           '0',
+            'kcc_batchsplit':      '9',
+            'kcc_borders':         'black',
+            'kcc_author':          '',
+            'kcc_customwidth':     '',
+            'kcc_customheight':    '',
+        })
+        saved = __import__('json').loads(config_file.read_text())
+    assert saved['kcc_profile']    == 'KoLC'
+    assert saved['kcc_format']     == 'EPUB'
+    assert saved['kcc_cropping']   == '2'
+    assert saved['kcc_splitter']   == '1'
+    assert saved['kcc_batchsplit'] == '0'
+
+
+def test_validate_post_file_wait_timeout_clamped(client, tmp_path):
+    import config as cfg
+    config_file = tmp_path / 'settings.json'
+    with __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
+         __import__('unittest.mock', fromlist=['patch']).patch.object(cfg, 'CONFIG_DIR', str(tmp_path)):
+        client.post('/', data={
+            'kcc_profile': 'KPW5', 'kcc_format': 'EPUB', 'kcc_cropping': '2',
+            'kcc_croppingpower': '1.0', 'kcc_croppingminimum': '1',
+            'kcc_splitter': '1', 'kcc_gamma': '0', 'kcc_batchsplit': '0',
+            'kcc_borders': 'black', 'kcc_author': '', 'kcc_customwidth': '',
+            'kcc_customheight': '', 'file_wait_timeout': '9999',
+        })
+        saved = __import__('json').loads(config_file.read_text())
+    assert saved['file_wait_timeout'] == 300

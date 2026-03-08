@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: `kcc_borders`, `kcc_gamma`, `kcc_profile`, `kcc_format`, `kcc_cropping`, `kcc_splitter`, and `kcc_batchsplit` were unvalidated string passthroughs from POST — invalid values now fall back to safe defaults instead of being written to `settings.json`
+- Fixed: kepubify pinned to v4.0.4 in Dockerfile — was previously downloading `latest` at build time, producing non-reproducible images
+- Added: `File Stability Timeout` setting in WebUI (10–300 s, default 60) — configures how long Bindery waits for a file to finish transferring before skipping it
+- Added: `/api/logs` JSON endpoint — activity log now live-polls every 5 s instead of requiring a full page reload
+- Added: persistent log written to `/app/config/bindery.log` — log history survives container restarts and is pre-loaded into the UI on startup (trimmed to 5000 lines)
+- Added: 18 new tests covering `_build_kcc_cmd` flag logic, `process_file` error paths, `scan_directories` dispatch and skip behaviour, `_validate_post` enum and clamp validation, and `/api/logs`
+
 ## v2.7.1 — WebUI Polish
 
 - Fixed: reMarkable device profiles now use a Jinja for loop, consistent with Kindle and Kobo

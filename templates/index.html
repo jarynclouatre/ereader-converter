@@ -368,12 +368,22 @@
 
         <button type="submit" class="btn">Save Configuration</button>
     </div>
+    <div class="card">
+        <h2>Bindery Settings</h2>
+        <div class="field" style="max-width:220px">
+            <label class="lbl">File Stability Timeout (s)</label>
+            <input type="number" name="file_wait_timeout"
+                   min="10" max="300" step="1"
+                   value="{{ config.file_wait_timeout }}">
+        </div>
+        <p class="note">How long Bindery waits for a file to finish transferring before skipping it. Increase if files on slow network drives are frequently skipped. Range: 10–300 s.</p>
+    </div>
     </form>
 
     <div class="card">
         <div class="log-header">
             <h2 class="log-title">Recent Activity</h2>
-            <a href="/" class="log-refresh">Refresh</a>
+            <span class="log-refresh" style="color:#3a5c3a">&#9679; live</span>
         </div>
         <div class="logbox" id="logbox">
 {% for line in logs %}{% if 'SUCCESS' in line or 'STARTING' in line %}<span class="log-ok">{{ line }}</span>
@@ -388,6 +398,30 @@
 <script>
     var lb = document.getElementById('logbox');
     if (lb) lb.scrollTop = lb.scrollHeight;
+
+    var lastLogCount = {{ logs|length }};
+    function getLogClass(l) {
+        if (l.indexOf('SUCCESS') !== -1 || l.indexOf('STARTING') !== -1) return 'log-ok';
+        if (l.indexOf('FAILED')  !== -1 || l.indexOf('ERROR')    !== -1) return 'log-err';
+        if (l.indexOf('CMD:')    !== -1)                                  return 'log-cmd';
+        return 'log-info';
+    }
+    function pollLogs() {
+        fetch('/api/logs').then(function(r){return r.json();}).then(function(data){
+            if (data.logs.length <= lastLogCount) return;
+            var atBottom = lb.scrollHeight - lb.scrollTop - lb.clientHeight < 30;
+            data.logs.slice(lastLogCount).forEach(function(line) {
+                var sp = document.createElement('span');
+                sp.className = getLogClass(line);
+                sp.textContent = line;
+                lb.appendChild(sp);
+                lb.appendChild(document.createTextNode('\n'));
+            });
+            lastLogCount = data.logs.length;
+            if (atBottom) lb.scrollTop = lb.scrollHeight;
+        }).catch(function(){});
+    }
+    setInterval(pollLogs, 5000);
 
     function toggleCustomFields() {
         var isOther = document.getElementById('kcc_profile').value === 'OTHER';

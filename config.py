@@ -36,6 +36,7 @@ DEFAULT_CONFIG: ConfigDict = {
     'kcc_batchsplit':        '0',
     'kcc_customwidth':       '',
     'kcc_customheight':      '',
+    'file_wait_timeout':     60,
 }
 
 _config_lock = threading.Lock()

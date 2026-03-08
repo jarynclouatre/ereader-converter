@@ -106,3 +106,171 @@ def test_process_file_flags_failed_when_no_output(tmp_path):
 
     assert not src.exists(), "source file should have been removed or renamed"
     assert (comics_in / 'test.cbz.failed').exists(), "source should be renamed .failed when no output produced"
+
+
+def test_build_kcc_cmd_basic(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    filepath = str(tmp_path / 'test.cbz')
+    cmd = processor._build_kcc_cmd(config, filepath, '/tmp/out')
+    assert 'kcc-c2e' in cmd
+    assert '--profile' in cmd
+    assert config['kcc_profile'] in cmd
+    assert filepath in cmd
+    assert '--output' in cmd
+
+
+def test_build_kcc_cmd_gamma_zero_omitted(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_gamma'] = '0'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--gamma' not in cmd
+
+
+def test_build_kcc_cmd_gamma_nonzero_included(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_gamma'] = '1.8'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--gamma' in cmd
+    assert '1.8' in cmd
+
+
+def test_build_kcc_cmd_black_borders(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_borders'] = 'black'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--blackborders' in cmd
+    assert '--whiteborders' not in cmd
+
+
+def test_build_kcc_cmd_white_borders(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_borders'] = 'white'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--whiteborders' in cmd
+    assert '--blackborders' not in cmd
+
+
+def test_build_kcc_cmd_no_borders(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_borders'] = 'none'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--blackborders' not in cmd
+    assert '--whiteborders' not in cmd
+
+
+def test_build_kcc_cmd_other_profile_custom_dims(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_profile']      = 'OTHER'
+    config['kcc_customwidth']  = '1264'
+    config['kcc_customheight'] = '1680'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--customwidth'  in cmd and '1264' in cmd
+    assert '--customheight' in cmd and '1680' in cmd
+
+
+def test_build_kcc_cmd_non_other_profile_ignores_custom_dims(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_profile']      = 'KPW5'
+    config['kcc_customwidth']  = '1264'
+    config['kcc_customheight'] = '1680'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--customwidth'  not in cmd
+    assert '--customheight' not in cmd
+
+
+def test_build_kcc_cmd_metadatatitle_uses_filename(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_metadatatitle'] = True
+    filepath = str(tmp_path / 'My Comic.cbz')
+    cmd = processor._build_kcc_cmd(config, filepath, '/tmp/out')
+    assert '--title' in cmd
+    assert 'My Comic' in cmd
+
+
+def test_build_kcc_cmd_author_included(tmp_path):
+    from config import DEFAULT_CONFIG
+    config = dict(DEFAULT_CONFIG)
+    config['kcc_author'] = 'Frank Miller'
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'test.cbz'), '/tmp/out')
+    assert '--author' in cmd
+    assert 'Frank Miller' in cmd
+
+
+def test_process_file_conversion_error(tmp_path):
+    comics_in = tmp_path / 'comics_in'
+    comics_in.mkdir()
+    src = comics_in / 'test.cbz'
+    src.write_bytes(b'fake cbz')
+
+    with patch.object(processor, 'COMICS_IN',  str(comics_in)), \
+         patch.object(processor, 'COMICS_OUT', str(tmp_path / 'comics_out')), \
+         patch('processor.load_config', return_value=dict(DEFAULT_CONFIG)), \
+         patch('processor.wait_for_file_ready', return_value=True), \
+         patch('processor._run_conversion', side_effect=processor.ConversionError(1)):
+        processor.process_file(str(src), 'comic')
+
+    assert not src.exists()
+    assert (comics_in / 'test.cbz.failed').exists()
+
+
+def test_process_file_unexpected_exception(tmp_path):
+    comics_in = tmp_path / 'comics_in'
+    comics_in.mkdir()
+    src = comics_in / 'test.cbz'
+    src.write_bytes(b'fake cbz')
+
+    with patch.object(processor, 'COMICS_IN',  str(comics_in)), \
+         patch.object(processor, 'COMICS_OUT', str(tmp_path / 'comics_out')), \
+         patch('processor.load_config', return_value=dict(DEFAULT_CONFIG)), \
+         patch('processor.wait_for_file_ready', return_value=True), \
+         patch('processor._run_conversion', side_effect=RuntimeError('disk full')):
+        processor.process_file(str(src), 'comic')
+
+    assert not src.exists()
+    assert (comics_in / 'test.cbz.failed').exists()
+
+
+def test_scan_directories_dispatches_comic(tmp_path):
+    comics_in = tmp_path / 'comics_in'
+    books_in  = tmp_path / 'books_in'
+    comics_in.mkdir()
+    books_in.mkdir()
+    (comics_in / 'test.cbz').write_bytes(b'x')
+
+    dispatched = []
+    with patch.object(processor, 'COMICS_IN', str(comics_in)), \
+         patch.object(processor, 'BOOKS_IN',  str(books_in)), \
+         patch('processor.threading') as mock_threading:
+        mock_threading.Lock.return_value = __import__('threading').Lock()
+        def _fake_thread(target, args, daemon): dispatched.append(args); return MagicMock()
+        mock_threading.Thread = MagicMock(side_effect=_fake_thread)
+        processor.PROCESSING_LOCKS.clear()
+        processor.scan_directories()
+
+    assert any(str(comics_in / 'test.cbz') in str(a) for a in dispatched)
+
+
+def test_scan_directories_skips_failed_files(tmp_path):
+    comics_in = tmp_path / 'comics_in'
+    books_in  = tmp_path / 'books_in'
+    comics_in.mkdir()
+    books_in.mkdir()
+    (comics_in / 'test.cbz.failed').write_bytes(b'x')
+
+    with patch.object(processor, 'COMICS_IN', str(comics_in)), \
+         patch.object(processor, 'BOOKS_IN',  str(books_in)), \
+         patch('processor.threading') as mock_threading:
+        mock_threading.Lock.return_value = __import__('threading').Lock()
+        processor.PROCESSING_LOCKS.clear()
+        processor.scan_directories()
+
+    mock_threading.Thread.assert_not_called()

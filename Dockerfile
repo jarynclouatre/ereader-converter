@@ -29,7 +29,7 @@ RUN set -eux; \
       i386)  asset="kepubify-linux-32bit"  ;; \
       *) echo "Unsupported arch: $arch" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/pgaskin/kepubify/releases/latest/download/${asset}" \
+    curl -fsSL "https://github.com/pgaskin/kepubify/releases/download/v4.0.4/${asset}" \
       -o /usr/local/bin/kepubify; \
     chmod +x /usr/local/bin/kepubify; \
     kepubify --version

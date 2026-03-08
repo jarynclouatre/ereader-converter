@@ -29,16 +29,43 @@ log_lock         = threading.Lock()
 # Books (kepubify) are unaffected and run in parallel.
 kcc_semaphore = threading.Semaphore(1)
 
+LOG_FILE = '/app/config/bindery.log'
+
 
 def log(msg: str) -> None:
     line = msg.rstrip()
     with log_lock:
         LOG_BUFFER.append(line)
+        try:
+            with open(LOG_FILE, 'a') as f:
+                f.write(line + '\n')
+        except OSError:
+            pass
     sys.stdout.write(line + '\n')
     sys.stdout.flush()
 
 
-def wait_for_file_ready(filepath: str) -> bool:
+def _load_log_history() -> None:
+    """Pre-populate LOG_BUFFER from the persistent log file on startup.
+    Trims the file to the last 5000 lines to prevent unbounded growth."""
+    try:
+        with open(LOG_FILE) as f:
+            lines = f.read().splitlines()
+        if len(lines) > 5000:
+            lines = lines[-5000:]
+            try:
+                with open(LOG_FILE, 'w') as f:
+                    f.write('\n'.join(lines) + '\n')
+            except OSError:
+                pass
+        with log_lock:
+            for line in lines[-300:]:
+                LOG_BUFFER.append(line)
+    except OSError:
+        pass
+
+
+def wait_for_file_ready(filepath: str, timeout: int = 60) -> bool:
     """Poll until the file size stabilises, indicating the transfer is complete.
 
     Polls every 2s for up to 60s (30 attempts). Returns False on timeout; the
@@ -46,7 +73,7 @@ def wait_for_file_ready(filepath: str) -> bool:
     Only definitive failures rename to .failed.
     """
     last_size = -1
-    for _ in range(30):
+    for _ in range(max(1, timeout // 2)):
         try:
             if not os.path.exists(filepath):
                 return False
@@ -173,11 +200,10 @@ def process_file(filepath: str, c_type: str) -> None:
     in_base  = BOOKS_IN if c_type == 'book' else COMICS_IN
     temp_out = os.path.join('/tmp', uuid.uuid4().hex + '_out')
     try:
-        if not wait_for_file_ready(filepath):
+        config  = load_config()
+        if not wait_for_file_ready(filepath, int(config.get('file_wait_timeout', 60))):
             log(f">>> SKIP (not ready): {short}")
             return
-
-        config  = load_config()
         rel_dir = os.path.relpath(os.path.dirname(filepath), in_base)
         if rel_dir == '.':
             rel_dir = ''

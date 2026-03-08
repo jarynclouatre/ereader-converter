@@ -4,7 +4,7 @@ import threading
 from flask import Flask, jsonify, request, render_template
 
 from config import DEFAULT_CONFIG, load_config, save_config, ConfigDict
-from processor import LOG_BUFFER, log_lock, log, watch_loop
+from processor import LOG_BUFFER, log_lock, log, watch_loop, _load_log_history
 from raw_processor import raw_watch_loop
 
 VERSION = "2.7.1"
@@ -29,6 +29,34 @@ def _validate_post(config: ConfigDict) -> ConfigDict:
                 config[key] = str(max(0, int(val)))
             except (ValueError, TypeError):
                 config[key] = ''
+
+    _VALID_BORDERS    = {'none', 'black', 'white'}
+    _VALID_GAMMA      = {'0', '0.5', '0.8', '1.0', '1.2', '1.5', '1.8', '2.0', '2.2'}
+    _VALID_PROFILE    = {
+        'K1', 'K2', 'K11', 'K34', 'K57', 'K810', 'KDX', 'KPW', 'KPW34', 'KPW5',
+        'KV', 'KO', 'KCS', 'KS', 'KS3', 'KSCS', 'KS1860', 'KS1920',
+        'KoMT', 'KoG', 'KoGHD', 'KoA', 'KoAHD', 'KoAH2O', 'KoAO',
+        'KoN', 'KoF', 'KoS', 'KoC', 'KoCC', 'KoL', 'KoLC', 'KoE',
+        'Rmk1', 'Rmk2', 'RmkPP', 'RmkPPMove', 'OTHER',
+    }
+    _VALID_FORMAT     = {'EPUB', 'MOBI', 'CBZ', 'KFX'}
+    _VALID_CROPPING   = {'0', '1', '2'}
+    _VALID_SPLITTER   = {'0', '1', '2', '3', '4'}
+    _VALID_BATCHSPLIT = {'0', '1', '2'}
+
+    if config['kcc_borders']    not in _VALID_BORDERS:    config['kcc_borders']    = 'black'
+    if config['kcc_gamma']      not in _VALID_GAMMA:      config['kcc_gamma']      = '0'
+    if config['kcc_profile']    not in _VALID_PROFILE:    config['kcc_profile']    = DEFAULT_CONFIG['kcc_profile']
+    if config['kcc_format']     not in _VALID_FORMAT:     config['kcc_format']     = 'EPUB'
+    if config['kcc_cropping']   not in _VALID_CROPPING:   config['kcc_cropping']   = '2'
+    if config['kcc_splitter']   not in _VALID_SPLITTER:   config['kcc_splitter']   = '1'
+    if config['kcc_batchsplit'] not in _VALID_BATCHSPLIT: config['kcc_batchsplit'] = '0'
+
+    try:
+        config['file_wait_timeout'] = int(max(10, min(300, int(config.get('file_wait_timeout', 60)))))
+    except (ValueError, TypeError):
+        config['file_wait_timeout'] = 60
+
     return config
 
 
@@ -38,6 +66,12 @@ def create_app(start_threads: bool = True) -> Flask:
     @app.route('/health')
     def health():
         return jsonify({'status': 'ok'})
+
+    @app.route('/api/logs')
+    def api_logs():
+        with log_lock:
+            logs = list(LOG_BUFFER)
+        return jsonify({'logs': logs})
 
     @app.route('/', methods=['GET', 'POST'])
     def index():
@@ -54,6 +88,8 @@ def create_app(start_threads: bool = True) -> Flask:
                         'kcc_upscale', 'kcc_nosplitrotate', 'kcc_rotate',
                         'kcc_metadatatitle', 'kcc_nokepub'):
                 config[key] = key in request.form
+            config['file_wait_timeout'] = request.form.get(
+                'file_wait_timeout', DEFAULT_CONFIG.get('file_wait_timeout', 60))
             config = _validate_post(config)
             save_config(config)
             saved = True
@@ -67,6 +103,7 @@ def create_app(start_threads: bool = True) -> Flask:
     # worker process after fork. --preload would start them in the master process,
     # they would be killed on fork, and the worker would run with dead watchers.
     if start_threads:
+        _load_log_history()
         log(">>> Bindery started. Watching /Books_in, /Comics_in, and /Comics_raw every 10s.")
         threading.Thread(target=watch_loop, daemon=True).start()
         threading.Thread(target=raw_watch_loop, daemon=True).start()
