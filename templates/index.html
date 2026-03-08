@@ -468,10 +468,12 @@
     }
     setInterval(pollLogs, 5000);
 
+    var activeModeAtLoad = '{{ config.watcher_mode }}';
     function toggleInotifyWarn() {
         var sel = document.getElementById('watcher_mode');
-        document.getElementById('inotify-warn').style.display =
-            sel && sel.value === 'inotify' ? 'block' : 'none';
+        var selected = sel ? sel.value : '';
+        var needsRestart = selected === 'inotify' || activeModeAtLoad === 'inotify';
+        document.getElementById('inotify-warn').style.display = needsRestart ? 'block' : 'none';
     }
     var wmSel = document.getElementById('watcher_mode');
     if (wmSel) { wmSel.addEventListener('change', toggleInotifyWarn); toggleInotifyWarn(); }
