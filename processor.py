@@ -191,9 +191,8 @@ def process_file(filepath: str, c_type: str) -> None:
             _run_conversion(cmd, short)
 
         else:
-            log(f">>> STARTING: KCC on {short}")
             cmd = _build_kcc_cmd(config, filepath, temp_out)
-            log(f">>> QUEUED (waiting for KCC slot): {short}")
+            log(f">>> QUEUED: {short}")
             with kcc_semaphore:
                 log(f">>> CMD: {' '.join(cmd)}")
                 _run_conversion(cmd, short)

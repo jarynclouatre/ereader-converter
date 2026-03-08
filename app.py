@@ -7,7 +7,7 @@ from config import DEFAULT_CONFIG, load_config, save_config, ConfigDict
 from processor import LOG_BUFFER, log_lock, log, watch_loop
 from raw_processor import raw_watch_loop
 
-VERSION = "2.7.0"
+VERSION = "2.7.1"
 
 
 def _clamp(value: object, min_val: float, max_val: float, default: float) -> str:

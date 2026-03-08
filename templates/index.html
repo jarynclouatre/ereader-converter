@@ -12,11 +12,13 @@
             background: #141414; color: #e0e0e0; padding: 24px 16px;
         }
         .wrap { max-width: 980px; margin: auto; }
-        h1 { font-size: 1.5rem; color: #5aabff; margin-bottom: 4px; }
+        h1 { font-size: 1.5rem; color: #5aabff; margin-bottom: 2px; }
+        .version { font-size: .7rem; color: #444; margin-bottom: 6px; }
         .subtitle { font-size: .85rem; color: #555; margin-bottom: 24px; }
         h2 { font-size: .82rem; color: #5aabff; border-bottom: 1px solid #252525;
              padding-bottom: 8px; margin: 0 0 16px; text-transform: uppercase;
              letter-spacing: .07em; }
+        .log-title { border: none; padding-bottom: 0; margin-bottom: 0; }
         .card { background: #1c1c1c; border: 1px solid #282828; border-radius: 8px;
                 padding: 22px; margin-bottom: 20px; }
         .alert { background: #182818; border: 1px solid #2a5a2a; color: #6fcf6f;
@@ -38,6 +40,7 @@
                padding-top: 14px; border-top: 1px solid #252525; }
         .sec:first-child { margin-top: 0; padding-top: 0; border-top: none; }
         .checks { display: flex; flex-direction: column; gap: 4px; }
+        .checks-spaced { margin-bottom: 14px; }
         .check { display: flex; align-items: flex-start; gap: 10px;
                  padding: 7px 8px; border-radius: 5px; cursor: pointer;
                  transition: background .12s; }
@@ -74,8 +77,8 @@
 <div class="wrap">
 
     <h1>Bindery</h1>
+    <div class="version">v{{ version }}</div>
     <p class="subtitle">Automated e-book and comic converter — scanning every 10 seconds</p>
-    <div style="font-size: 0.7rem; color: #444; margin-top: -18px; margin-bottom: 24px;">v{{ version }}</div>
 
     {% if saved %}<div class="alert">Settings saved successfully.</div>{% endif %}
 
@@ -89,7 +92,7 @@
 
                 <div class="field">
                     <label class="lbl">Device Profile</label>
-                    <select name="kcc_profile">
+                    <select name="kcc_profile" id="kcc_profile">
                         <optgroup label="Kindle">
                             {% for val, lbl in [
                                 ('K1','Kindle 1'),
@@ -136,10 +139,14 @@
                             {% endfor %}
                         </optgroup>
                         <optgroup label="reMarkable">
-                            <option value="Rmk1"      {% if config.kcc_profile == 'Rmk1'      %}selected{% endif %}>reMarkable 1</option>
-                            <option value="Rmk2"      {% if config.kcc_profile == 'Rmk2'      %}selected{% endif %}>reMarkable 2</option>
-                            <option value="RmkPP"     {% if config.kcc_profile == 'RmkPP'     %}selected{% endif %}>reMarkable Paper Pro</option>
-                            <option value="RmkPPMove" {% if config.kcc_profile == 'RmkPPMove' %}selected{% endif %}>reMarkable Paper Pro Move</option>
+                            {% for val, lbl in [
+                                ('Rmk1','reMarkable 1'),
+                                ('Rmk2','reMarkable 2'),
+                                ('RmkPP','reMarkable Paper Pro'),
+                                ('RmkPPMove','reMarkable Paper Pro Move')
+                            ] %}
+                            <option value="{{ val }}" {% if config.kcc_profile == val %}selected{% endif %}>{{ lbl }}</option>
+                            {% endfor %}
                         </optgroup>
                         <optgroup label="Other">
                             <option value="OTHER" {% if config.kcc_profile == 'OTHER' %}selected{% endif %}>Generic / Custom resolution</option>
@@ -317,7 +324,7 @@
                 </div>
 
                 <div class="sec">Output Metadata</div>
-                <div class="checks" style="margin-bottom: 14px;">
+                <div class="checks checks-spaced">
                     <label class="check">
                         <input type="checkbox" name="kcc_metadatatitle" {% if config.kcc_metadatatitle %}checked{% endif %}>
                         <span>
@@ -342,14 +349,14 @@
                 </div>
 
                 <div class="sec">Custom Profile Resolution</div>
-                <p class="note">Only used when profile is set to Generic / Custom.</p>
-                <div class="field">
+                <p class="note" id="custom_note">Only used when profile is set to Generic / Custom.</p>
+                <div class="field" id="custom_width">
                     <label class="lbl">Custom Width (px)</label>
                     <input type="number" name="kcc_customwidth" min="0"
                            placeholder="e.g. 1264"
                            value="{{ config.kcc_customwidth }}">
                 </div>
-                <div class="field">
+                <div class="field" id="custom_height">
                     <label class="lbl">Custom Height (px)</label>
                     <input type="number" name="kcc_customheight" min="0"
                            placeholder="e.g. 1680"
@@ -365,7 +372,7 @@
 
     <div class="card">
         <div class="log-header">
-            <h2 style="border:none; margin:0; padding:0;">Recent Activity</h2>
+            <h2 class="log-title">Recent Activity</h2>
             <a href="/" class="log-refresh">Refresh</a>
         </div>
         <div class="logbox" id="logbox">
@@ -381,6 +388,16 @@
 <script>
     var lb = document.getElementById('logbox');
     if (lb) lb.scrollTop = lb.scrollHeight;
+
+    function toggleCustomFields() {
+        var isOther = document.getElementById('kcc_profile').value === 'OTHER';
+        var display = isOther ? '' : 'none';
+        document.getElementById('custom_note').style.display   = display;
+        document.getElementById('custom_width').style.display  = display;
+        document.getElementById('custom_height').style.display = display;
+    }
+    document.getElementById('kcc_profile').addEventListener('change', toggleCustomFields);
+    toggleCustomFields();
 </script>
 </body>
 </html>

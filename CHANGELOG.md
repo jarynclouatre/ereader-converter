@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.7.1 — WebUI Polish
+
+- Fixed: reMarkable device profiles now use a Jinja for loop, consistent with Kindle and Kobo
+- Fixed: log section h2 used inline styles to fight its own class rules — replaced with `.log-title` modifier class
+- Fixed: version line used a fragile negative margin — now a proper `.version` class in natural document flow
+- Fixed: Output Metadata checks div used an inline `margin-bottom` — replaced with `.checks-spaced` class
+- Improved: Custom Profile Resolution fields (width, height, note) are now hidden unless Generic / Custom profile is selected
+- Improved: KCC log no longer emits a redundant STARTING line before QUEUED — comics now log QUEUED then CMD
+
+
 ## v2.7.0 — Device Profiles & Borders Overhaul
 - Fixed: incorrect KCC profile keys — `K578` split into correct `K57` (Kindle 5/7) and `K810` (Kindle 8/10); `KPW3` corrected to `KPW34`; `KoM`+`KoT` merged to correct `KoMT` (Kobo Mini/Touch); `KoCE` corrected to `KoCC` (Kobo Clara Colour); removed `KoE2` (no KCC profile exists)
 - Added missing KCC profiles: `K11` (Kindle 11), `KCS` (Kindle Colorsoft), `KS3` (Kindle Scribe 3), `KSCS` (Kindle Scribe Colorsoft), `KS1860`, `KS1920`, `KoN` (Kobo Nia), `KoS` (Kobo Sage), `RmkPPMove` (reMarkable Paper Pro Move)
