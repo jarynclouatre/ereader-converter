@@ -6,6 +6,7 @@
 - Added: `/api/status` endpoint — returns full job registry as JSON, sorted newest first
 - Added: `/api/retry` endpoint — re-queues a failed job by ID
 - Added: `/api/files` endpoint — lists output files with name, size, and mtime
+- Fixed: Save Configuration button moved below all settings cards so it clearly saves KCC and Bindery Settings together
 - Added: `/api/files/download` endpoint — serves output files as downloads with path-traversal protection
 
 ## v2.8.2 — Inotify Initial Scan Fix
