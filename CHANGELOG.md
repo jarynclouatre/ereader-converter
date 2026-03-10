@@ -4,7 +4,7 @@
 
 # Changelog
 
-## v2.8.1 — Project Structure Cleanup
+## v2.8.1 — Bug Fixes & Project Structure
 
 - Fixed: Dockerfile was hardcoding pip dependencies instead of installing from `requirements.txt`; now uses `COPY requirements.txt` + `pip install -r` for proper layer caching
 - Fixed: CI workflow hardcoded `pip install flask pytest` instead of using `requirements-dev.txt`
@@ -74,7 +74,7 @@
 - Added GitHub Actions workflow to automatically build and push images on each release
 - Updated README with Docker Hub quick start and updated compose example
 
-## v2.3.2 — Housekeeping
+## v2.3.2 — Bug Fix
 
 - Fixed: WebUI version number was not updated in previous releases
 
@@ -117,7 +117,7 @@
   - `templates/index.html` — HTML template extracted from Python
   - `app.py` — lean Flask entry point
 
-## v1.0.0 — Stable Release
+## v1.0.0 — Initial Release
 
 - Automated folder watching (every 10 seconds) for Books and Comics
 - Full WebUI for real-time KCC and kepubify configuration
