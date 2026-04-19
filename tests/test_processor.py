@@ -330,3 +330,49 @@ def test_notify_failure_fires_with_error_in_body():
     mock_instance.notify.assert_called_once()
     assert mock_instance.notify.call_args.kwargs['title'] == 'Bindery: Conversion failed'
     assert 'exit 1' in mock_instance.notify.call_args.kwargs['body']
+
+
+# --- v3.0.2: wait_for_file_ready stability tests ---
+
+def test_wait_for_file_ready_requires_three_stable_reads(tmp_path):
+    """Three consecutive identical sizes are required before returning True."""
+    from unittest.mock import patch
+    f = tmp_path / "comic.cbz"
+    f.write_bytes(b"data")
+    sizes = [1000, 1000, 1000, 1000]  # set last_size, then 3 matches
+    with patch("processor.os.path.getsize", side_effect=sizes), \
+         patch("processor.time.sleep"):
+        assert processor.wait_for_file_ready(str(f), timeout=60) is True
+
+
+def test_wait_for_file_ready_two_stable_not_enough(tmp_path):
+    """Two stable readings followed by timeout must return False."""
+    from unittest.mock import patch
+    f = tmp_path / "comic.cbz"
+    f.write_bytes(b"data")
+    sizes = [1000, 1000]  # timeout=3 => 2 loop iterations, never reaches 3
+    with patch("processor.os.path.getsize", side_effect=sizes), \
+         patch("processor.time.sleep"):
+        assert processor.wait_for_file_ready(str(f), timeout=3) is False
+
+
+def test_wait_for_file_ready_resets_on_size_change(tmp_path):
+    """A size change mid-sequence resets the stable counter to zero."""
+    from unittest.mock import patch
+    f = tmp_path / "comic.cbz"
+    f.write_bytes(b"data")
+    sizes = [1000, 1000, 2000, 2000, 2000, 2000]  # 2 stable, grows, then 3 stable
+    with patch("processor.os.path.getsize", side_effect=sizes), \
+         patch("processor.time.sleep"):
+        assert processor.wait_for_file_ready(str(f), timeout=60) is True
+
+
+def test_wait_for_file_ready_oserror_resets_counter(tmp_path):
+    """An OSError during polling resets the stable counter."""
+    from unittest.mock import patch
+    f = tmp_path / "comic.cbz"
+    f.write_bytes(b"data")
+    sizes = [OSError("busy"), 1000, 1000, 1000, 1000]  # error, then 3 stable
+    with patch("processor.os.path.getsize", side_effect=sizes), \
+         patch("processor.time.sleep"):
+        assert processor.wait_for_file_ready(str(f), timeout=60) is True
