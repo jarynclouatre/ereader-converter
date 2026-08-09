@@ -704,7 +704,12 @@ def _build_kepubify_cmd(config: ConfigDict, filepath: str, temp_out: str) -> lis
     """
     cmd = ['kepubify', '--inplace', '--output', temp_out]
 
-    if config.get('book_extension', 'kepub') in ('kepub', 'epub'):
+    # settings.json bypasses _validate_post, so re-clamp here too (mirrors
+    # kcc_format's fallback in _build_kcc_cmd).
+    book_ext = config.get('book_extension', 'kepub')
+    if book_ext not in ('kepub', 'kepub.epub', 'epub'):
+        book_ext = 'kepub'
+    if book_ext in ('kepub', 'epub'):
         cmd.append('--calibre')
 
     if config.get('book_smarten_punctuation'): cmd.append('--smarten-punctuation')
@@ -718,15 +723,17 @@ def _build_kepubify_cmd(config: ConfigDict, filepath: str, temp_out: str) -> lis
     if titlepage == 'on':  cmd.append('--add-dummy-titlepage')
     if titlepage == 'off': cmd.append('--no-add-dummy-titlepage')
 
-    # = form, so values starting with a dash don't read as options
-    css = str(config.get('book_css', '')).strip()
+    # = form, so values starting with a dash don't read as options. `or ''`
+    # instead of a get(..., '') default: a hand-edited settings.json can carry
+    # an explicit JSON null, and str(None) is the literal string 'None'.
+    css = (config.get('book_css') or '').strip()
     if css:
         cmd.append('--css=' + css)
-    for line in str(config.get('book_replace', '')).splitlines():
+    for line in (config.get('book_replace') or '').splitlines():
         line = line.strip()
         if '|' in line:
             cmd.append('--replace=' + line)
-    charset = str(config.get('book_charset', '')).strip()
+    charset = (config.get('book_charset') or '').strip()
     if charset:
         cmd.append('--charset=' + charset)
 
@@ -791,7 +798,13 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
             mode = config.get('originals', 'delete') if c_type == 'comic' else 'delete'
             if mode == 'keep':
                 _discard_previous_outputs(filepath)
-            book_ext = config.get('book_extension', 'kepub') if c_type == 'book' else None
+            book_ext = None
+            if c_type == 'book':
+                # settings.json bypasses _validate_post, so re-clamp here too
+                # (mirrors kcc_format's fallback in _build_kcc_cmd).
+                book_ext = config.get('book_extension', 'kepub')
+                if book_ext not in ('kepub', 'kepub.epub', 'epub'):
+                    book_ext = 'kepub'
             dests = [move_output_file(f, target_dir, book_ext) for f in produced]
             if os.path.exists(filepath):
                 if mode == 'keep':

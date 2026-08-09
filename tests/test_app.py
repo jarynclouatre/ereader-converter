@@ -124,6 +124,23 @@ def test_book_css_is_length_capped(client, tmp_path):
     assert len(saved['book_css']) == 10000
 
 
+def test_validate_post_coalesces_explicit_null_book_fields():
+    """A hand-edited settings.json can carry a JSON null for these keys, and
+    load_config() passes it through unchanged (it only fills missing keys).
+    str(None) is the literal string 'None', which must not survive validation
+    and persist as a real value on the next save. Calls _validate_post
+    directly: request.form.get() always returns a string, so posting the
+    settings form can never itself put a Python None into this function."""
+    config = dict(DEFAULT_CONFIG)
+    config['book_css']     = None
+    config['book_charset'] = None
+    config['book_replace'] = None
+    result = _validate_post(config)
+    assert result['book_css']     == ''
+    assert result['book_charset'] == ''
+    assert result['book_replace'] == ''
+
+
 def test_book_checkboxes_save(client, tmp_path):
     saved, _ = _post(client, tmp_path,
                      book_smarten_punctuation='on', book_fullscreen_fixes='on')

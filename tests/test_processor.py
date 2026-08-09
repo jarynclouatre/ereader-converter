@@ -199,6 +199,16 @@ def test_build_kepubify_cmd_extension_maps_to_calibre_flag(tmp_path, extension, 
     assert ('--calibre' in cmd) is calibre_flag
 
 
+def test_build_kepubify_cmd_invalid_extension_falls_back_to_kepub(tmp_path):
+    """settings.json bypasses _validate_post, so an out-of-range book_extension
+    must still be re-clamped here, mirroring kcc_format's fallback in
+    _build_kcc_cmd, rather than trusted raw."""
+    config = dict(DEFAULT_CONFIG)
+    config['book_extension'] = 'mobi'
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert '--calibre' in cmd  # same as the 'kepub' fallback would produce
+
+
 @pytest.mark.parametrize('key, value, flag, present', [
     ('book_smarten_punctuation', True,  '--smarten-punctuation',      True),
     ('book_smarten_punctuation', False, '--smarten-punctuation',      False),
@@ -243,10 +253,28 @@ def test_build_kepubify_cmd_omits_empty_free_text(tmp_path):
     assert not any(a.startswith('--replace') for a in cmd)
 
 
+def test_build_kepubify_cmd_explicit_null_omitted_not_stringified(tmp_path):
+    """A hand-edited settings.json can carry a JSON null for these keys.
+    str(None) is the literal string 'None', which must never reach the
+    kepubify command line as --css=None / --charset=None."""
+    config = dict(DEFAULT_CONFIG)
+    config['book_css']     = None
+    config['book_charset'] = None
+    config['book_replace'] = None
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert not any(a.startswith('--css') for a in cmd)
+    assert not any(a.startswith('--charset') for a in cmd)
+    assert not any(a.startswith('--replace') for a in cmd)
+    assert not any('None' in a for a in cmd)
+
+
 @pytest.mark.parametrize('extension, kepubify_writes, expected_output', [
     ('kepub',      'Book.kepub',      'Book.kepub'),
     ('kepub.epub', 'Book.kepub.epub', 'Book.kepub.epub'),
     ('epub',       'Book.kepub',      'Book.epub'),
+    # Out-of-range value (hand-edited settings.json, bypasses _validate_post)
+    # must fall back to 'kepub' rather than being trusted raw by move_output_file.
+    ('mobi',       'Book.kepub',      'Book.kepub'),
 ])
 def test_process_file_book_honours_extension(tmp_path, extension,
                                              kepubify_writes, expected_output):

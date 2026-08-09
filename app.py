@@ -84,16 +84,19 @@ def _validate_post(config: ConfigDict) -> ConfigDict:
     if config.get('book_hyphenate')       not in _VALID_TRISTATE: config['book_hyphenate']       = 'auto'
     if config.get('book_dummy_titlepage') not in _VALID_TRISTATE: config['book_dummy_titlepage'] = 'auto'
 
-    charset = str(config.get('book_charset', '')).strip()
+    # `or ''` instead of a get(..., '') default: a hand-edited settings.json can
+    # carry an explicit JSON null, and str(None) is the literal string 'None',
+    # which would otherwise persist as a real value on the next save.
+    charset = (config.get('book_charset') or '').strip()
     config['book_charset'] = charset if re.fullmatch(r'[A-Za-z0-9_.:-]{0,40}', charset) else ''
 
     # kepubify wants find|replace. A rule without a separator makes it exit 1
     # and produce nothing, so one bad line would fail every book conversion.
     config['book_replace'] = '\n'.join(
-        line.strip() for line in str(config.get('book_replace', '')).splitlines()
+        line.strip() for line in (config.get('book_replace') or '').splitlines()
         if '|' in line)
 
-    config['book_css'] = str(config.get('book_css', ''))[:10000]
+    config['book_css'] = (config.get('book_css') or '')[:10000]
 
     config['apprise_urls'] = config.get('apprise_urls', '')
 
