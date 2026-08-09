@@ -1,13 +1,22 @@
-## Unreleased: Books Conversion Settings
+## v4.3.0: Books Settings & KCC 11
+
+Books now have their own conversion controls, with safer output naming and an updated conversion stack.
 
 ### Added
 
 - **Books settings card**: everything dropped into `Books_in` now has its own settings card in the WebUI, exposing kepubify's conversion options: output extension, smarten punctuation, hyphenation, dummy titlepage, fullscreen reading fixes, custom CSS, find and replace, and charset override. Previously every one of these was hardcoded.
-- **Output extension for books**: choose `.kepub` (the default, and what Calibre and Calibre-Web-Automated expect), `.kepub.epub` (what a Kobo recognises when you copy books to it over USB), or plain `.epub`.
+- **Output extension for books**: choose `.kepub` (the default, and what Calibre and Calibre-Web-Automated expect), `.kepub.epub` (what a Kobo recognises over USB), or `.epub` for a conventional filename. All three options still run the book through kepubify and contain Kobo enhancements.
 
 ### Fixed
 
 - **No KEPUB Extension no longer looks like it applies to books.** The setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
+- **Shared book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when `Books_in` and `Books_out` point at the same folder. Bindery now rejects that setting in the WebUI and pauses book processing if it finds the same unsafe combination in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
+
+### Changed
+
+- The Docker image now runs Python 3.13 and KCC 11.0.1, with current runtime libraries and GitHub Actions.
+
+Thanks to @tekgnosis-net for contributing the books settings work in #14.
 
 ## v4.2.1: Keep-in-Place Fixes
 

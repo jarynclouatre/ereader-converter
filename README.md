@@ -8,7 +8,7 @@
   <a href="https://github.com/jarynclouatre/bindery/actions/workflows/test.yml"><img src="https://github.com/jarynclouatre/bindery/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
   <a href="https://hub.docker.com/r/dinkeyes/bindery"><img src="https://img.shields.io/badge/Docker-dinkeyes%2Fbindery-2496ED?logo=docker&logoColor=white" alt="Docker"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python 3.13+">
 </p>
 
 A self-hosted, Dockerized converter that automatically processes e-books and comics dropped into watched folders, no manual steps required.
@@ -160,7 +160,7 @@ Books dropped into `Books_in` are converted by [kepubify](https://github.com/pga
 
 | Setting | Default | Notes |
 |---------|---------|-------|
-| Output Extension | `.kepub` | `.kepub` is what Calibre and Calibre-Web-Automated expect when ingesting. `.kepub.epub` is what a Kobo recognises when you copy books to it over USB. `.epub` leaves the converted file looking like an ordinary EPUB. Unless this is `.kepub`, `Books_in` and `Books_out` must be different folders: the other two extensions still end in `.epub`, so a shared folder rescans its own output as new input and converts it again on every pass. |
+| Output Extension | `.kepub` | `.kepub` is what Calibre and Calibre-Web-Automated expect when ingesting. `.kepub.epub` is what a Kobo recognises when you copy books to it over USB. `.epub` still contains kepubify's Kobo enhancements; it only gives the converted book a conventional extension. With `.epub` or `.kepub.epub`, `Books_in` and `Books_out` must be separate folders. Bindery pauses book conversion if both mounts refer to the same folder, preventing it from repeatedly converting its own output. |
 | Smarten Punctuation | off | Converts straight quotes and dashes to typographic ones, leaving `pre` and `code` blocks alone. |
 | Hyphenation | `Auto` | Force hyphenation on or off instead of leaving the book as it is. |
 | Dummy Titlepage | `Auto` | Auto uses kepubify's heuristic. Force on fixes layout problems on the first page of some books. |
