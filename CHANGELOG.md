@@ -5,19 +5,23 @@ Books now have their own conversion controls, with safer output naming and an up
 ### Added
 
 - **Books settings card**: everything dropped into `Books_in` now has its own settings card in the WebUI, exposing kepubify's conversion options: output extension, smarten punctuation, hyphenation, dummy titlepage, fullscreen reading fixes, custom CSS, find and replace, and charset override. Previously every one of these was hardcoded.
-- **Output extension for books**: choose `.kepub` (the default, and what Calibre and Calibre-Web-Automated expect), `.kepub.epub` (what a Kobo recognises over USB), or `.epub` for a conventional filename. All three options still run the book through kepubify and contain Kobo enhancements.
+- **Output extension for books**: choose `.kepub`, the default and what Calibre and Calibre-Web-Automated expect, `.kepub.epub`, what a Kobo recognises over USB, or `.epub` for a conventional filename. All three options still run the book through kepubify and contain Kobo enhancements.
 
 ### Fixed
 
-- **No KEPUB Extension no longer looks like it applies to books.** The setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
-- **Overlapping book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when either book folder contains the other. Bindery now rejects every overlapping layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
-- **KCC settings match KCC 11.** The landscape splitter now shows KCC's real Split, Rotate, and Split and rotate modes; obsolete controls that made conversions fail are gone; and KCC's current spread options and Kindle Paperwhite and Scribe profiles are available.
+- **No KEPUB Extension no longer looks like it applies to books**: the setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
+- **Overlapping book folders fail safely**: converted `.epub` and `.kepub.epub` files can be picked up as fresh input when either book folder contains the other. Bindery now rejects every overlapping layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
+- **KCC settings match KCC 11**: the landscape splitter now shows KCC's real Split, Rotate, and Split and rotate modes; obsolete controls that made conversions fail are gone; and KCC's current spread options and Kindle Paperwhite and Scribe profiles are available.
 
 ### Changed
 
-- The Docker image now runs Python 3.13 and KCC 11.0.1, with current runtime libraries and GitHub Actions. Existing saved KCC settings are migrated to the supported equivalents automatically.
+- **Python 3.13 and KCC 11.0.1**: the Docker image now runs both, with current runtime libraries and GitHub Actions. Existing saved KCC settings are migrated to the supported equivalents automatically.
 
 Thanks to @tekgnosis-net for contributing the books settings work in #14.
+
+### Upgrading
+
+Pull the latest image and restart. Existing settings keep the old `.kepub` behaviour by default. Before choosing `.epub` or `.kepub.epub`, make sure `Books_in` and `Books_out` are separate folders and neither one contains the other.
 
 ## v4.2.1: Keep-in-Place Fixes
 
@@ -25,8 +29,12 @@ Two bugs surfaced by the follow-up on issue #13, both hitting libraries where `C
 
 ### Fixed
 
-- **A timestamp touch no longer re-converts a kept source.** Library managers touch files when they scan or rewrite metadata, and Bindery counted every touch as a new version, converting the same comic over and over and adding a `_2`, `_3`... copy each round. A kept source now re-converts only when its content actually changes, and when it does the new book replaces the earlier one instead of stacking another copy beside it.
-- **Folders without comics are left alone.** A top-level folder in `Comics_in` holding nothing comic-typed (an epub-only book folder in a shared library, for instance) was treated as a folder conversion job, failed inside KCC, and got the whole folder renamed to `<name>.failed`. Folders with nothing to convert are no longer jobs and are never renamed.
+- **A timestamp touch no longer re-converts a kept source**: library managers touch files when they scan or rewrite metadata, and Bindery counted every touch as a new version, converting the same comic over and over and adding a `_2`, `_3`... copy each round. A kept source now re-converts only when its content actually changes, and when it does the new book replaces the earlier one instead of stacking another copy beside it.
+- **Folders without comics are left alone**: a top-level folder in `Comics_in` holding nothing comic-typed, an epub-only book folder in a shared library for instance, was treated as a folder conversion job, failed inside KCC, and got the whole folder renamed to `<name>.failed`. Folders with nothing to convert are no longer jobs and are never renamed.
+
+### Upgrading
+
+Pull the latest image and restart. Leftover `_2`, `_3`... copies from the loop are safe to delete. If any folder in your library picked up a `.failed` suffix from the second bug, rename it back and it will be left alone from now on.
 
 ## v4.2.0: Light Mode, Dashboards & ComicInfo
 
@@ -40,7 +48,7 @@ Three additions aimed at making Bindery nicer to live with and easier to keep an
 
 ### Note
 
-- The image is multi-arch and always has been, x86 and ARM64 both, so a Raspberry Pi or ARM NAS works too. This is now called out in the README.
+- **The image is multi-arch and always has been**, x86 and ARM64 both, so a Raspberry Pi or ARM NAS works too. This is now called out in the README.
 
 ## v4.1.0: Keep Originals In Place
 
@@ -48,36 +56,39 @@ A small release for anyone who keeps their comics in a library manager: leave th
 
 ### Added
 
-- **Keep in place**: the Originals setting has a new option that leaves a source comic right where it is after it converts, instead of deleting it or moving it to `.archive`. Point `Comics_in` and `Comics_out` at the same folder and the original and the converted book end up side by side, which is what tools like Calibre, Kavita, and BookOrbit expect. Bindery keeps a small record of what it has already converted, so a kept source is never re-converted on the next scan, and re-converts on its own only if you drop a changed copy over it. Thanks to @thevanburenboy for the clear write-up in #13.
+- **Keep in place**: the Originals setting has a new option that leaves a source comic right where it is after it converts, instead of deleting it or moving it to `.archive`. Point `Comics_in` and `Comics_out` at the same folder and the original and the converted book end up side by side, which is what tools like Calibre, Kavita, and BookOrbit expect. Bindery keeps a small record of what it has already converted, so a kept source is never re-converted on the next scan, and re-converts on its own only if you drop a changed copy over it.
 
 ### Changed
 
-- **Preserve Originals** is now a three-way **Originals** setting: Delete after converting (the default), Move to `Comics_in/.archive`, or Keep in place. Existing settings migrate automatically, so nothing changes unless you pick the new option.
+- **Preserve Originals is now a three-way Originals setting**: Delete after converting (the default), Move to `Comics_in/.archive`, or Keep in place. Existing settings migrate automatically, so nothing changes unless you pick the new option.
+
+Thanks to @thevanburenboy for the clear write-up in #13.
 
 ## v4.0.0: Device Profiles, Browser Upload & Merged Volumes
+
+Per-device conversion settings with their own drop folders, uploads straight from the browser, and chapter folders that bundle into one volume.
 
 ### Added
 
 - **Device Profiles**: create named profiles in the WebUI (`kobo`, `kindle`, ...), each with its own KCC settings and its own drop folder. `Comics_in/kobo` converts for the Kobo and lands in `Comics_out/kobo`; `Comics_in/kindle` for the Kindle. Drops in the root of `Comics_in` behave exactly as they always have, and nothing changes until you create your first profile.
-- **Upload from the browser**: drag files onto the WebUI (or tap the strip on a phone) and they land in the right watch folder, including profile folders. No network shares or shell access needed.
-- **Bundle Chapter Folders**: turn it on and a folder of chapter archives (`.cbz`/`.cbr`/`.zip`/`.rar`) converts as ONE volume with a chapter per file in natural order, instead of one book per chapter. Off by default; per-file conversion stays the default behaviour. Thanks to @Elrict for pushing on this back in #9. Folders of chapter files now bundle properly, not just folders of images.
+- **Upload from the browser**: drag files onto the WebUI, or tap the strip on a phone, and they land in the right watch folder, including profile folders. No network shares or shell access needed.
+- **Bundle Chapter Folders**: turn it on and a folder of chapter archives (`.cbz`/`.cbr`/`.zip`/`.rar`) converts as ONE volume with a chapter per file in natural order, instead of one book per chapter. Off by default; per-file conversion stays the default behaviour. Folders of chapter files now bundle properly, not just folders of images.
 - **Size savings**: successful conversions show before → after sizes and the percentage saved in the status table.
 
-### Improved
+### Changed
 
-- The WebUI got a full visual refresh.
+- **WebUI**: a full visual refresh.
+- **KCC upgraded `v10.3.0` → `v10.4.0`**: a smart-cover-crop crash fix and higher JPEG quality on Scribe and Colorsoft profiles.
 
-### Updated
-
-- KCC `v10.3.0` → `v10.4.0`: smart-cover-crop crash fix and higher JPEG quality on Scribe/Colorsoft profiles
+Thanks to @Elrict for pushing on chapter bundling back in #9.
 
 ## v3.6.0: MozJPEG
 
-KCC's MozJPEG option is now a toggle in the WebUI. Turn it on and the JPEG pages inside the output book are re-encoded with MozJPEG for smaller files, at the cost of somewhat slower conversion.
+KCC's MozJPEG option is now a toggle in the WebUI. Turn it on and the JPEG pages inside the output book are re-encoded with the MozJPEG encoder for smaller files, at the cost of somewhat slower conversion.
 
 ### Added
 
-- MozJPEG toggle under Color and Quality. Passes KCC's `--mozjpeg`, which re-encodes JPEG pages with the MozJPEG encoder. Off by default since it slows processing.
+- **MozJPEG**: a toggle under Color and Quality. It passes KCC's `--mozjpeg`, which re-encodes every JPEG page with the MozJPEG encoder. Off by default since it slows processing.
 
 Thanks to @Brandyii for the suggestion (#11).
 
@@ -87,219 +98,284 @@ KCC's rainbow eraser is now a toggle in the WebUI. Turn it on and colour pages g
 
 ### Added
 
-- Rainbow Eraser toggle under Color and Quality. Passes KCC's `--eraserainbow`, which attenuates the rainbow interference pattern colour e-ink screens add to colour pages. Off by default, and it only affects colour output.
+- **Rainbow Eraser**: a toggle under Color and Quality. It passes KCC's `--eraserainbow`, which attenuates the rainbow interference pattern colour e-ink screens add to colour pages. Off by default, and it only affects colour output.
 
 Thanks to @Brandyii for the request (#10).
 
 ## v3.4.0: Folder Volumes, Format Cleanup & Watcher Fixes
 
-The headline: drop a folder of images into `Comics_in` and it converts as a single bundled volume, a pile of long-standing conversion bugs are fixed, the image is 60% smaller, and the WebUI got a proper cleanup on desktop and mobile.
+Drop a folder of images into `Comics_in` and it converts as a single bundled volume, a pile of long-standing conversion bugs are fixed, the image is 60% smaller, and the WebUI got a proper cleanup on desktop and mobile.
 
 ### Added
 
-- Folder volumes: a folder of images dropped into `Comics_in` converts as one volume named after the folder, with subfolders as chapters. Folders containing comic archives convert file-by-file with structure preserved instead, since KCC can't ingest nested archives. Both work with Retry and Preserve Originals.
+- **Folder volumes**: a folder of images dropped into `Comics_in` converts as one volume named after the folder, with subfolders as chapters. Folders containing comic archives convert file-by-file with structure preserved instead, since KCC cannot ingest nested archives. Both work with Retry and Preserve Originals.
 
 ### Fixed
 
-- Cropping was silently disabled for everyone: KCC expects a 0–1 ratio for cropping minimum but Bindery sent a percentage, so the old default of `1` blocked every crop. Values are now converted properly and the default is `0`.
-- inotify mode never processed folder jobs (their events fire mid-copy) and could convert-and-delete files inside one individually. Folder contents now route to their folder job, and a 60 s backstop scan catches whatever events miss, including files on network mounts, which previously were missed entirely in inotify mode.
-- The scanner walked into `<name>.failed` folders and converted the files inside, silently consuming a failed job's sources.
-- Repeated failures no longer collide: `.failed` renames pick a free name, the job remembers the real path so Retry finds it, and Retry refuses to overwrite a newly dropped file with the same name.
-- Jobs interrupted by a restart no longer sit as permanent "processing" rows.
-- Files with dash-leading names (`-Batman.cbz`) failed inside KCC's 7z call; Bindery now renames them with a log line before converting.
-- The live activity log froze once its 300-line buffer filled.
-- Preserve Originals archive moves are collision-safe instead of overwriting files or nesting folders.
+- **Cropping was silently disabled for everyone**: KCC expects a 0-1 ratio for cropping minimum but Bindery sent a percentage, so the old default of `1` blocked every crop. Values are now converted properly and the default is `0`.
+- **inotify mode never processed folder jobs**: their events fire mid-copy, and it could convert and delete files inside a folder individually. Folder contents now route to their folder job, and a 60 s backstop scan catches whatever events miss, including files on network mounts, which were previously missed entirely in inotify mode.
+- **`.failed` folders were scanned**: the scanner walked into `<name>.failed` folders and converted the files inside, silently consuming a failed job's sources.
+- **Repeated failures no longer collide**: `.failed` renames pick a free name, the job remembers the real path so Retry finds it, and Retry refuses to overwrite a newly dropped file with the same name.
+- **Interrupted jobs**: jobs interrupted by a restart no longer sit as permanent "processing" rows.
+- **Dash-leading filenames**: files like `-Batman.cbz` failed inside KCC's 7z call. Bindery now renames them with a log line before converting.
+- **Activity log freeze**: the live log froze once its 300-line buffer filled.
+- **Archive moves**: Preserve Originals archive moves are collision-safe instead of overwriting files or nesting folders.
 
 ### Changed
 
-- MOBI and KFX output removed: MOBI needs Amazon's abandoned kindlegen binary and KFX a Calibre plugin, neither of which can ship in this image, so every such conversion failed. Existing configs fall back to EPUB, which Kindles accept via [Send to Kindle](https://www.amazon.com/sendtokindle).
-- KCC upgraded v9.4.3 → v10.3.0 (better PDF handling via rasterisation, five months of upstream fixes including the v10 major release) and installed without its GUI dependency chain; the image drops from 1.55 GB to about 620 MB.
-- WebUI reworked: processing status, file browser, and activity log now sit above the settings form, text contrast fixed throughout, and the mobile layout no longer crushes the status table. Plus touch-sized buttons, keyboard focus outlines, and friendlier empty states.
+- **MOBI and KFX output removed**: MOBI needs Amazon's abandoned kindlegen binary and KFX needs a Calibre plugin, neither of which can ship in this image, so every such conversion failed. Existing configs fall back to EPUB, which Kindles accept via [Send to Kindle](https://www.amazon.com/sendtokindle).
+- **KCC upgraded v9.4.3 → v10.3.0**: better PDF handling via rasterisation and five months of upstream fixes, including the v10 major release. It installs without its GUI dependency chain, dropping the image from 1.55 GB to about 620 MB.
+- **WebUI reworked**: processing status, file browser, and activity log now sit above the settings form, text contrast is fixed throughout, and the mobile layout no longer crushes the status table. Plus touch-sized buttons, keyboard focus outlines, and friendlier empty states.
 
 ## v3.3.1: Fix Startup Crash When SKIP_CHOWN Unset
 
-### What's new
+A bugfix release. `entrypoint.sh` crashed on startup for any deployment that did not explicitly set the `SKIP_CHOWN` environment variable, which is the default for almost everyone.
 
-This is a bugfix release. `entrypoint.sh` crashed on startup with `SKIP_CHOWN: unbound variable` for any deployment that did not explicitly set the `SKIP_CHOWN` environment variable, which is the default for almost everyone. The script runs under `set -u`, and the `SKIP_CHOWN` check had no default, so the container exited before the app started.
+### Fixed
 
-`SKIP_CHOWN` now defaults to `false`, matching how `PUID` / `PGID` are already handled. Setting `SKIP_CHOWN=true` still behaves exactly as before.
+- **`SKIP_CHOWN: unbound variable` on startup**: the script runs under `set -u` and the `SKIP_CHOWN` check had no default, so the container exited before the app started. `SKIP_CHOWN` now defaults to `false`, matching how `PUID` and `PGID` are already handled. Setting `SKIP_CHOWN=true` still behaves exactly as before.
 
-### Changes
+### Upgrading
 
-- Fixed: `entrypoint.sh` startup crash (`SKIP_CHOWN: unbound variable`) when `SKIP_CHOWN` is not set. It now defaults to `false`, consistent with the existing `PUID` / `PGID` pattern
-- Note: behaviour is unchanged when `SKIP_CHOWN` is set explicitly
-
-If you were affected, just pull the new image. No compose or config changes needed.
+If you were affected, pull the new image. No compose or config changes are needed.
 
 ## v3.3.0: PDF Support for Comics
 
-### What's new
+Bindery now recognises `.pdf` as a comic input format.
 
-Bindery now recognises `.pdf` as a comic input format. Drop a PDF into `Comics_in` alongside your `.cbz` / `.cbr` / `.zip` / `.rar` files and it gets picked up by both the poll scanner and the inotify watcher, then handed to KCC just like any other comic source.
+### Added
 
-A note on EPUBs since an issue mentioned them too: KCC does not accept EPUB as an input format (EPUB is one of its outputs). Graphic-novel EPUBs should go in `Books_in`, where they'll be handled by the kepubify pipeline. They won't get KCC's image-optimisation treatment, but that's a KCC limitation, not something Bindery can route around.
+- **`.pdf` comic input**: drop a PDF into `Comics_in` alongside your `.cbz`, `.cbr`, `.zip`, and `.rar` files and it gets picked up by both the poll scanner and the inotify watcher, then handed to KCC just like any other comic source.
+- **Test coverage**: a unit test covering PDF dispatch in `scan_directories`.
 
-### Changes
+### Note
 
-- New: `.pdf` added to the comic input extension set, recognised by both poll-mode and inotify-mode watchers
-- Note: EPUBs continue to be handled by the books pipeline via kepubify; KCC does not accept EPUB as input
-- Added: unit test covering PDF dispatch in `scan_directories`
+- **EPUBs are still handled by the books pipeline**: KCC does not accept EPUB as an input format, since EPUB is one of its outputs. Graphic-novel EPUBs should go in `Books_in`, where kepubify handles them. They will not get KCC's image-optimisation treatment, but that is a KCC limitation rather than something Bindery can route around.
 
-Existing setups need no changes. Drop a PDF in `Comics_in` and it just works. Thanks to @ponchohoncho for the report (#8).
+Thanks to @ponchohoncho for the report (#8).
+
+### Upgrading
+
+Pull the latest image and restart. Existing setups need no changes; drop a PDF in `Comics_in` and it just works.
 
 ## v3.2.0: Optional chown Skip
 
-### What's new
+Bindery `chown`s its data folders on every container start so files end up owned by your `PUID`/`PGID`. On NFS shares mounted into unprivileged LXC containers the kernel blocks that even though normal reads and writes work fine, so Bindery aborted at startup over a step it did not strictly need.
 
-By default, Bindery `chown`s its data folders on every container start so files end up owned by your `PUID`/`PGID`. That works everywhere a privileged container can write ownership, but on NFS shares mounted into unprivileged LXC containers the kernel blocks `chown` even when normal reads and writes work fine. The result was Bindery aborting at startup over a step it didn't strictly need.
+### Added
 
-This release adds a `SKIP_CHOWN` environment variable to opt out. Set it to `true` in your compose file and the chown step is bypassed entirely; Bindery trusts that whatever ownership the volumes already have is good enough.
+- **`SKIP_CHOWN` environment variable**: set it to `true` in your compose file and the initial `chown` step is bypassed entirely, with Bindery trusting whatever ownership the volumes already have. Useful for NFS and SMB mounts in unprivileged LXC containers, or any setup where the container can read and write but not change ownership.
 
-### Changes
+Thanks to @ponchohoncho for the report (#7).
 
-- New `SKIP_CHOWN` environment variable. Set to `true` to skip the initial `chown` step entirely
-- Useful for NFS/SMB mounts in unprivileged LXC containers, or any setup where the container can read and write but not change ownership
-- Default behaviour is unchanged: `chown` still runs unless `SKIP_CHOWN=true` is explicitly set
+### Upgrading
 
-Disabled by default. Existing setups need no changes. Thanks to @ponchohoncho for the report (#7).
+Pull the latest image and restart. Default behaviour is unchanged; `chown` still runs unless `SKIP_CHOWN=true` is set explicitly.
 
 ## v3.1.1: Skip Dot-Folders
 
-### What's fixed
+Syncthing and similar sync tools create hidden dot-folders inside watched directories, and Bindery was scanning inside them and converting whatever it found.
 
-Syncthing (and similar sync tools) create hidden dot-folders inside watched directories: `.stfolder`, `.stversions`, etc. Bindery was scanning inside them and attempting to convert whatever files it found there.
+### Fixed
 
-### Changes
+- **Dot-folders are skipped**: any directory whose name starts with `.` is now skipped in both poll and inotify modes. That covers `.stfolder`, `.stversions`, `.archive`, and anything else like them.
 
-- Any directory whose name starts with `.` is now skipped universally in both poll and inotify modes. Covers `.stfolder`, `.stversions`, `.archive`, and anything else like them
+### Upgrading
 
-No config changes needed. Existing setups will pick this up automatically on container restart.
+Pull the latest image and restart. No config changes are needed.
 
 ## v3.1.0: Preserve Originals
 
-### What's new
+By default Bindery deletes source files from `Comics_in` after a successful conversion. For most setups that is fine, but if you run Bindery as part of a larger workflow and need the originals to stick around, there was no way to stop it.
 
-By default, Bindery deletes source files from `Comics_in` after a successful conversion. For most setups that's fine, but if you're running Bindery as part of a larger workflow and need the originals to stick around, there was no way to stop it.
+### Added
 
-This release adds a **Preserve Originals** toggle in Bindery Settings. When enabled, source comics are moved to `Comics_in/.archive` instead of deleted. The subfolder structure is mirrored: a file at `Comics_in/Marvel/issue01.cbz` archives to `Comics_in/.archive/Marvel/issue01.cbz`. The `.archive` folder is never scanned or reprocessed.
+- **Preserve Originals**: a toggle in Bindery Settings. With it on, source comics move to `Comics_in/.archive` instead of being deleted, and the subfolder structure is mirrored, so a file at `Comics_in/Marvel/issue01.cbz` archives to `Comics_in/.archive/Marvel/issue01.cbz`. `Comics_in/.archive` is excluded from both the poll scanner and the inotify watcher, so files there are never reprocessed.
 
-### Changes
+### Upgrading
 
-- New **Preserve Originals** toggle in Bindery Settings. Moves source comics to `Comics_in/.archive` after conversion instead of deleting them
-- `Comics_in/.archive` is excluded from both the poll scanner and the inotify watcher. Files there are never reprocessed
+Pull the latest image and restart. The toggle is off by default, existing setups need no changes, and book conversions are unaffected.
 
-Disabled by default. No config changes needed for existing setups. Has no effect on book conversions.
+## v3.0.2: Fix Premature Processing of In-Progress File Transfers
 
-## v3.0.2: Fix premature processing of in-progress file transfers
+Bindery was converting files that had not finished copying yet.
 
-### What's fixed
+### Fixed
 
-Bindery was processing files that hadn't finished copying yet.
+- **Partial transfers are no longer converted**: when dropping files into `Comics_in` via FileBrowser, the watcher could start a conversion before the transfer finished. FileBrowser, like most copy tools, pauses briefly between write chunks, and if that pause hit Bindery's 2-second poll window the file looked stable when it was not. KCC then tried to convert a partial or corrupt CBZ, failed, and renamed it to `.failed`, which blocked FileBrowser from finishing the copy. `wait_for_file_ready` now requires 3 consecutive stable size readings, about 6 seconds, instead of 1 before handing a file to the converter.
+- **inotify close events**: inotify mode also handles `on_closed` (`IN_CLOSE_WRITE`), which fires only once the writing process has fully closed the file, a definitive transfer-complete signal for clients like FileBrowser.
 
-When dropping files into `/Comics_in` via FileBrowser, the file watcher would start a conversion before the transfer was complete. FileBrowser (and most copy tools) briefly pause between write chunks; if that pause hit Bindery's 2-second poll window, the file appeared stable when it wasn't. KCC then tried to convert a partial/corrupt CBZ, failed, and renamed it to `.failed`, which blocked FileBrowser from finishing the copy.
+### Upgrading
 
-### Changes
-
-- `wait_for_file_ready` now requires **3 consecutive stable size readings (~6 seconds)** instead of 1 before passing a file to the converter
-- **inotify mode** now also handles `on_closed` (`IN_CLOSE_WRITE`), which fires only after the writing process fully closes the file, a definitive "transfer complete" signal for clients like FileBrowser
-
-No config changes needed. Existing setups will pick this up automatically on container restart.
+Pull the latest image and restart. No config changes are needed.
 
 ## v3.0.1: Bug Fixes & Housekeeping
 
-### What's new
+A round of small fixes and build cleanup.
 
-- Fixed: entrypoint.sh crashed on startup when PUID/PGID matched an existing system UID/GID
-- Fixed: wait_for_file_ready waited up to 2s less than configured on odd timeout values
-- Fixed: _notify used hardcoded fallback values instead of DEFAULT_CONFIG
-- Improved: comic conversions now log STARTING when conversion begins, matching book log style
-- Added: .dockerignore to reduce Docker build context
-- Added: apprise to requirements-dev.txt so notification tests run in CI
-- Added: 5 unit tests covering _notify paths
+### Added
+
+- **`.dockerignore`**: reduces the Docker build context.
+- **apprise in `requirements-dev.txt`**: so the notification tests run in CI.
+- **Test coverage**: 5 unit tests covering `_notify` paths.
+
+### Fixed
+
+- **Startup crash**: `entrypoint.sh` crashed when PUID/PGID matched an existing system UID/GID.
+- **File stability timeout**: `wait_for_file_ready` waited up to 2 s less than configured on odd timeout values.
+- **Notification defaults**: `_notify` used hardcoded fallback values instead of `DEFAULT_CONFIG`.
+
+### Changed
+
+- **Comic logging**: comic conversions now log STARTING when conversion begins, matching the book log style.
 
 ## v3.0.0: Status, File Browser & Notifications
 
-### What's new
+Three additions that make it possible to see what Bindery is doing without opening a shell.
 
-- Added: Processing Status card, a live table showing every conversion job with state, timestamps, duration, and a Retry button for failed files; history persists across restarts
-- Added: File Browser card. Browse and download files from Books Out and Comics Out directly from the WebUI; no Samba or SSH required
-- Added: Notifications via Apprise. Send push notifications on success and/or failure to ntfy, Discord, Slack, Telegram, Pushover, email, and 60+ other services
-- Fixed: Save Configuration button moved below all settings cards so it clearly applies to both KCC and Bindery Settings
+### Added
+
+- **Processing Status card**: a live table showing every conversion job with state, timestamps, duration, and a Retry button for failed files. History persists across restarts.
+- **File Browser card**: browse and download files from Books Out and Comics Out directly from the WebUI, with no Samba or SSH needed.
+- **Notifications via Apprise**: send push notifications on success and/or failure to ntfy, Discord, Slack, Telegram, Pushover, email, and 60+ other services.
+
+### Fixed
+
+- **Save Configuration placement**: the button now sits below all settings cards, so it is clear that it applies to both KCC and Bindery Settings.
 
 ## v2.8.2: Inotify Initial Scan Fix
 
-### What's new
+A fix for inotify mode, which ignored files that were already waiting when the container started.
 
-- Fixed: inotify watcher mode did not scan existing files on startup: files already sitting in Comics_in, Books_in, or Comics_raw when the container started were silently ignored; an initial scan now runs before the observer starts
+### Fixed
+
+- **Existing files are picked up on startup**: files already sitting in `Comics_in`, `Books_in`, or `Comics_raw` when the container started were silently ignored in inotify mode. An initial scan now runs before the observer starts.
 
 ## v2.8.1: Bug Fixes & Project Structure
 
-- Fixed: Dockerfile was hardcoding pip dependencies instead of installing from `requirements.txt`; now uses `COPY requirements.txt` + `pip install -r` for proper layer caching
-- Fixed: CI workflow hardcoded `pip install flask pytest` instead of using `requirements-dev.txt`
-- Fixed: `requirements-dev.txt` only contained `pytest`; added `flask` and `watchdog` so it reflects what tests actually need
-- Added: `pyproject.toml` with project metadata and pytest configuration (`testpaths = ["tests"]`)
+Build and dependency cleanup.
+
+### Added
+
+- **`pyproject.toml`**: project metadata and pytest configuration (`testpaths = ["tests"]`).
+
+### Fixed
+
+- **Dockerfile dependencies**: it hardcoded pip dependencies instead of installing from `requirements.txt`. It now uses `COPY requirements.txt` and `pip install -r` for proper layer caching.
+- **CI dependencies**: the workflow hardcoded `pip install flask pytest` instead of using `requirements-dev.txt`.
+- **`requirements-dev.txt`**: it only contained `pytest`, so `flask` and `watchdog` are added and it now reflects what the tests actually need.
 
 ## v2.8.0: inotify Watcher Mode & WebUI Improvements
 
-### What's new
-- Added: inotify watcher mode, with instant file detection on local filesystems; poll remains the default and works everywhere including network shares (NFS, SMB)
-- Added: Bindery Settings card in WebUI, with a Watcher Mode selector and File Stability Timeout field
-- Added: Save & Restart button that saves settings and restarts the container in one step; the page auto-reloads when healthy
-- Added: /api/restart endpoint
-- Added: /api/logs endpoint, so the activity log live-polls every 5 s instead of requiring a page reload
-- Added: persistent log at /app/config/bindery.log. It survives restarts and is pre-loaded into the UI on startup (trimmed to 5000 lines)
-- Added: File Stability Timeout setting in WebUI (10–300 s, default 60)
-- Fixed: kcc_borders, kcc_gamma, kcc_profile, kcc_format, kcc_cropping, kcc_splitter, and kcc_batchsplit were unvalidated; invalid POST values now fall back to safe defaults
-- Fixed: kepubify pinned to v4.0.4 in Dockerfile; it was previously downloading latest at build time
-- Improved: page subtitle reflects active watcher mode (polling vs inotify)
-- Improved: SVG logo header replaces plain text title
-- Added: 20 new tests covering _build_kcc_cmd, process_file error paths, scan_directories, _validate_post, and /api/logs
+Instant file detection on local filesystems, a settings card in the WebUI, and a live activity log.
+
+### Added
+
+- **inotify watcher mode**: instant file detection on local filesystems. Poll remains the default and works everywhere, including network shares (NFS, SMB).
+- **Bindery Settings card**: a WebUI card with a Watcher Mode selector and a File Stability Timeout field (10-300 s, default 60).
+- **Save & Restart**: saves settings and restarts the container in one step, and the page reloads itself once the container is healthy.
+- **`/api/restart` and `/api/logs` endpoints**: the activity log live-polls every 5 s instead of needing a page reload.
+- **Persistent log at `/app/config/bindery.log`**: it survives restarts and is pre-loaded into the UI on startup, trimmed to 5000 lines.
+- **Test coverage**: 20 new tests covering `_build_kcc_cmd`, `process_file` error paths, `scan_directories`, `_validate_post`, and `/api/logs`.
+
+### Fixed
+
+- **Unvalidated settings**: `kcc_borders`, `kcc_gamma`, `kcc_profile`, `kcc_format`, `kcc_cropping`, `kcc_splitter`, and `kcc_batchsplit` accepted anything. Invalid POST values now fall back to safe defaults.
+- **kepubify version drift**: kepubify is pinned to v4.0.4 in the Dockerfile instead of downloading the latest at build time.
+
+### Changed
+
+- **Page subtitle**: it reflects the active watcher mode, polling or inotify.
+- **Header**: an SVG logo replaces the plain text title.
 
 ## v2.7.1: WebUI Polish
 
-- Fixed: reMarkable device profiles now use a Jinja for loop, consistent with Kindle and Kobo
-- Fixed: log section h2 used inline styles to fight its own class rules; replaced with `.log-title` modifier class
-- Fixed: version line used a fragile negative margin; now a proper `.version` class in natural document flow
-- Fixed: Output Metadata checks div used an inline `margin-bottom`; replaced with `.checks-spaced` class
-- Improved: Custom Profile Resolution fields (width, height, note) are now hidden unless Generic / Custom profile is selected
-- Improved: KCC log no longer emits a redundant STARTING line before QUEUED; comics now log QUEUED then CMD
+A round of WebUI and stylesheet cleanup.
+
+### Fixed
+
+- **reMarkable device profiles**: they now use a Jinja for loop, consistent with Kindle and Kobo.
+- **Log section heading**: it used inline styles to fight its own class rules, and now uses a `.log-title` modifier class.
+- **Version line**: it used a fragile negative margin, and is now a `.version` class in natural document flow.
+- **Output Metadata spacing**: the checks div used an inline `margin-bottom`, and now uses a `.checks-spaced` class.
+
+### Changed
+
+- **Custom Profile Resolution fields**: width, height, and note are hidden unless the Generic or Custom profile is selected.
+- **KCC logging**: no redundant STARTING line before QUEUED; comics log QUEUED, then CMD.
 
 ## v2.7.0: Device Profiles & Borders Overhaul
-- Fixed: incorrect KCC profile keys that were silently passing wrong values: `K578` split into correct `K57` (Kindle 5/7) and `K810` (Kindle 8/10); `KPW3` corrected to `KPW34`; `KoM`+`KoT` merged to correct `KoMT` (Kobo Mini/Touch); `KoCE` corrected to `KoCC` (Kobo Clara Colour); removed `KoE2` (no KCC profile exists)
-- Added missing KCC profiles: `K11` (Kindle 11), `KCS` (Kindle Colorsoft), `KS3` (Kindle Scribe 3), `KSCS` (Kindle Scribe Colorsoft), `KS1860`, `KS1920`, `KoN` (Kobo Nia), `KoS` (Kobo Sage), `RmkPPMove` (reMarkable Paper Pro Move)
-- Updated `KO` label to include Paperwhite 12; updated `KS` label to Scribe 1/2
-- Changed: Borders setting replaced two checkboxes (Black Borders / White Borders) with a single dropdown (None / Black / White)
-- Note: existing `settings.json` files will get the new `kcc_borders` key defaulting to `black` on next save
+
+A pass over the KCC device profile list, which had several keys that silently sent the wrong values, plus a simpler Borders control.
+
+### Added
+
+- **Missing KCC profiles**: `K11` (Kindle 11), `KCS` (Kindle Colorsoft), `KS3` (Kindle Scribe 3), `KSCS` (Kindle Scribe Colorsoft), `KS1860`, `KS1920`, `KoN` (Kobo Nia), `KoS` (Kobo Sage), and `RmkPPMove` (reMarkable Paper Pro Move).
+
+### Fixed
+
+- **Profile keys that silently passed wrong values**: `K578` is split into `K57` (Kindle 5/7) and `K810` (Kindle 8/10); `KPW3` is corrected to `KPW34` (Paperwhite 3/4); `KoM` and `KoT` are merged into `KoMT` (Kobo Mini/Touch); `KoCE` is corrected to `KoCC` (Kobo Clara Colour); and `KoE2` is removed, since no KCC profile exists for it.
+- **Profile labels**: `KO` now includes Paperwhite 12, and `KS` reads Scribe 1/2.
+
+### Changed
+
+- **Borders**: the two Black Borders and White Borders checkboxes are now a single dropdown with None, Black, and White.
+
+### Upgrading
+
+Existing `settings.json` files pick up the new `kcc_borders` key, defaulting to `black`, on the next save.
 
 ## v2.6.0: Housekeeping
-- Added `requirements.txt` listing production dependencies (Flask, gunicorn, packaging, kcc)
-- Fixed: `comics_raw/` added to `.gitignore` to prevent accidentally tracking dropped image files
-- Fixed: `test_processor.py` mock config now imports directly from `config.py` instead of using a stale hardcoded fallback dict
-- Refactored: `app.py` now uses a `create_app()` factory; background threads no longer start at import time, removing the need for the import-time `threading.Thread` patch in `conftest.py`
-- Refactored: `_build_kcc_cmd` extracted from `process_file` in `processor.py`; KCC argument building is now a standalone testable function
-- Added module docstrings to all Python modules
-- Added docstrings to previously undocumented functions
-- Added type hints to all function signatures across `app.py`, `config.py`, `processor.py`, and `raw_processor.py`
-- Added `ConfigDict` type alias in `config.py` for the shared settings dictionary type
+
+Internal cleanup with no user-facing changes.
+
+### Added
+
+- **`requirements.txt`**: production dependencies are listed explicitly (Flask, gunicorn, packaging, kcc).
+- **`ConfigDict` type alias**: in `config.py`, for the shared settings dictionary type.
+- **Docstrings and type hints**: module docstrings on every Python module, docstrings on previously undocumented functions, and type hints across `app.py`, `config.py`, `processor.py`, and `raw_processor.py`.
+
+### Fixed
+
+- **`comics_raw/` was trackable**: it is now in `.gitignore`, so dropped image files cannot be committed by accident.
+- **Stale test config**: `test_processor.py` builds its mock config from `config.py` instead of a hardcoded fallback dict.
+
+### Changed
+
+- **`create_app()` factory**: `app.py` uses one, so background threads no longer start at import time and `conftest.py` no longer needs its import-time `threading.Thread` patch.
+- **`_build_kcc_cmd` extracted**: KCC argument building is a standalone testable function in `processor.py` rather than part of `process_file`.
 
 ## v2.5.0: Bug Fixes
 
-- Fixed: gunicorn "Control server error: Permission denied" on every container start; disabled the unused control socket introduced in gunicorn 25.1.0
-- Fixed: files that convert successfully but produce no output were retried on every scan instead of being flagged `.failed`
-- Fixed: unexpected exceptions in `process_file` (e.g. permission errors, disk full) left the source file untouched and retried forever; now renamed `.failed` same as other failure paths
-- Fixed: raw folders that hit an unexpected error during zipping were left in `Comics_raw` and retried forever; they are now moved to `Comics_raw/unprocessed/` like other failures
-- Fixed: subdirectory path calculation for files in the root of `Comics_in` / `Books_in` used the wrong `os.path` call order (worked by accident; now correct)
-- Fixed: `load_config` and `save_config` had no locking; concurrent conversion threads reading config while a POST was writing it could get partial JSON and silently fall back to defaults
-- Fixed: `settings.json` could be left truncated if the process was killed mid-write; write is now atomic via temp file + `os.replace()`
-- Fixed: WebUI accepted non-numeric input for `croppingpower`, `croppingminimum`, `customwidth`, and `customheight`; values are now validated and clamped before saving
-- Improved: `entrypoint.sh` `chown` no longer walks every file in all volumes on every container start; only files not already owned by `abc` are touched
-- Added comment to `wait_for_file_ready` explaining the 60s timeout and why SKIP does not rename to `.failed`
-- Added warning comment in `app.py` explaining why `--preload` must not be added to gunicorn
+A batch of failure-path fixes, mostly around files that could retry forever.
+
+### Fixed
+
+- **gunicorn control socket**: "Control server error: Permission denied" on every container start. The unused control socket introduced in gunicorn 25.1.0 is disabled.
+- **Successful conversions that produce no output**: they were retried on every scan instead of being flagged `.failed`.
+- **Unexpected exceptions in `process_file`**: permission errors, a full disk and the like left the source file untouched and retrying forever. They are now renamed `.failed` like other failure paths.
+- **Raw folders that error while zipping**: they were left in `Comics_raw` and retried forever, and now move to `Comics_raw/unprocessed/` like other failures.
+- **Subdirectory paths for root-level files**: files in the root of `Comics_in` or `Books_in` used the wrong `os.path` call order. It worked by accident; it is now correct.
+- **Unlocked config reads and writes**: `load_config` and `save_config` had no locking, so a conversion thread reading config while a POST was writing it could get partial JSON and silently fall back to defaults.
+- **Truncated `settings.json`**: it could be left half-written if the process was killed mid-write. Writes are now atomic via a temp file and `os.replace()`.
+- **Non-numeric WebUI input**: `croppingpower`, `croppingminimum`, `customwidth`, and `customheight` accepted anything. Values are validated and clamped before saving.
+
+### Changed
+
+- **`entrypoint.sh` chown**: it no longer walks every file in every volume on each container start; only files not already owned by `abc` are touched.
+- **Code comments**: `wait_for_file_ready` explains the 60 s timeout and why SKIP does not rename to `.failed`, and `app.py` explains why `--preload` must not be added to gunicorn.
 
 ## v2.4.0: Docker Hub Image
 
-- Bindery is now available as a pre-built image at `dinkeyes/bindery` on Docker Hub, no clone or build step required
-- Added GitHub Actions workflow to automatically build and push images on each release
-- Updated README with Docker Hub quick start and updated compose example
+Bindery now ships as a pre-built image, so there is no clone or build step.
+
+### Added
+
+- **Docker Hub image**: Bindery is available as a pre-built image at `dinkeyes/bindery`.
+- **Release build workflow**: a GitHub Actions workflow builds and pushes images automatically on each release.
+
+### Changed
+
+- **README**: the quick start now covers Docker Hub, with an updated compose example.
 
 Versions before 2.4.0 predate this changelog.
