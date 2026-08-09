@@ -1,18 +1,17 @@
-Flask
-gunicorn>=25.1
-watchdog
-apprise
+Flask>=3.1.3
+gunicorn>=26.0.0
+watchdog>=6.0.0
+apprise>=1.12.0
 
-# kcc-c2e's runtime deps, mirrored from KCC's requirements-docker.txt.
-# KCC itself is installed with --no-deps in the Dockerfile because its
-# install_requires drags in PySide6 (the Qt GUI), which the CLI never uses.
+# kcc-c2e's CLI runtime deps. Baselines follow KCC's Docker image; KCC itself
+# is installed with --no-deps because install_requires also pulls in PySide6,
+# which is only needed for the GUI.
 Pillow>=11.3.0
-psutil>=5.9.5
-requests>=2.31.0
-python-slugify>=8.0.4
-packaging>=23.2
+psutil>=7.2.2
+requests>=2.34.2
+python-slugify>=8.0.4,<9.0.0
+packaging>=26.2
 mozjpeg-lossless-optimization>=1.2.0
 natsort>=8.4.0
-distro>=1.8.0
-numpy>=1.22.4
-PyMuPDF>=1.16.1
+numpy>=2.3.4
+PyMuPDF>=1.26.6

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 ENV PYTHONUNBUFFERED=1
 
@@ -39,7 +39,7 @@ RUN ln -sf /usr/bin/7z /usr/local/bin/7za \
 
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
- && pip install --no-cache-dir --no-deps git+https://github.com/ciromattia/kcc.git@v10.4.0
+ && pip install --no-cache-dir --no-deps git+https://github.com/ciromattia/kcc.git@v11.0.1
 
 RUN mkdir -p /app /app/config /Comics_in /Comics_out /Books_in /Books_out /Comics_raw
 
