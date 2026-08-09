@@ -107,6 +107,10 @@ def test_build_kcc_cmd_basic(tmp_path):
     ('kcc_borders',      'none',  '--blackborders', False),
     ('kcc_eraserainbow', True,    '--eraserainbow', True),
     ('kcc_mozjpeg',      True,    '--mozjpeg',      True),
+    # kcc_nokepub is the whole reason the Books settings exist: it must keep
+    # controlling KCC's own (unrelated) --nokepub flag on the comic path.
+    ('kcc_nokepub',      True,    '--nokepub',      True),
+    ('kcc_nokepub',      False,   '--nokepub',      False),
 ])
 def test_build_kcc_cmd_flag_mappings(tmp_path, key, value, flag, present):
     config = dict(DEFAULT_CONFIG)
