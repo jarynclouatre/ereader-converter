@@ -145,6 +145,28 @@ def test_book_settings_stay_global_while_editing_a_profile(client, tmp_path):
     assert 'book_extension' not in saved['profiles']['kobo']
 
 
+def test_index_shows_books_card(client):
+    resp = client.get('/')
+    assert b'name="book_extension"' in resp.data
+    for value in (b'value="kepub"', b'value="kepub.epub"', b'value="epub"'):
+        assert value in resp.data
+
+
+@pytest.mark.parametrize('field', [
+    b'name="book_smarten_punctuation"', b'name="book_fullscreen_fixes"',
+    b'name="book_hyphenate"', b'name="book_dummy_titlepage"',
+    b'name="book_css"', b'name="book_replace"', b'name="book_charset"',
+])
+def test_index_shows_book_control(client, field):
+    assert field in client.get('/').data
+
+
+def test_nokepub_hint_says_comics(client):
+    """The KCC checkbox must not read as though it applies to books."""
+    resp = client.get('/')
+    assert b'Comics only' in resp.data
+
+
 def test_validate_post_saves_apprise_url(client, tmp_path):
     saved, _ = _post(client, tmp_path,
                      apprise_urls='ntfy://server/bindery',

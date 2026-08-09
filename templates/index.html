@@ -727,7 +727,7 @@
                         <input type="checkbox" name="kcc_nokepub" {% if config.kcc_nokepub %}checked{% endif %}>
                         <span>
                             <div class="check-label">No KEPUB Extension</div>
-                            <div class="check-hint">Output .epub instead of .kepub.epub on Kobo profiles</div>
+                            <div class="check-hint">Output .epub instead of .kepub.epub on Kobo profiles. Comics only; books have their own card below.</div>
                         </span>
                     </label>
                 </div>
@@ -757,6 +757,76 @@
 
         </div>
 
+    </div>
+
+    <div class="card">
+        <h2>Books — kepubify</h2>
+        <p class="note" style="margin-top:0">Applies to everything dropped in <code>Books_in</code>. Device profiles are a comics feature and never change these settings.</p>
+        <div class="grid-3">
+            <div>
+                <div class="field">
+                    <label class="lbl">Output Extension</label>
+                    <select name="book_extension" id="book_extension">
+                        <option value="kepub"      {% if config.book_extension == "kepub"      %}selected{% endif %}>.kepub (Calibre, Calibre-Web-Automated)</option>
+                        <option value="kepub.epub" {% if config.book_extension == "kepub.epub" %}selected{% endif %}>.kepub.epub (Kobo sideloading)</option>
+                        <option value="epub"       {% if config.book_extension == "epub"       %}selected{% endif %}>.epub (plain)</option>
+                    </select>
+                </div>
+                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. Choose <code>.epub</code> to leave the converted file looking like an ordinary EPUB.</p>
+            </div>
+            <div>
+                <div class="checks">
+                    <label class="check">
+                        <input type="checkbox" name="book_smarten_punctuation" {% if config.book_smarten_punctuation %}checked{% endif %}>
+                        <span>
+                            <div class="check-label">Smarten Punctuation</div>
+                            <div class="check-hint">Turns straight quotes and dashes into typographic ones, leaving pre and code blocks alone</div>
+                        </span>
+                    </label>
+                    <label class="check">
+                        <input type="checkbox" name="book_fullscreen_fixes" {% if config.book_fullscreen_fixes %}checked{% endif %}>
+                        <span>
+                            <div class="check-label">Fullscreen Reading Fixes</div>
+                            <div class="check-hint">Works around Kobo layout bugs on books built around full-page images</div>
+                        </span>
+                    </label>
+                </div>
+                <div class="field" style="margin-top:14px">
+                    <label class="lbl">Hyphenation</label>
+                    <select name="book_hyphenate" id="book_hyphenate">
+                        <option value="auto" {% if config.book_hyphenate == "auto" %}selected{% endif %}>Auto (leave the book alone)</option>
+                        <option value="on"   {% if config.book_hyphenate == "on"   %}selected{% endif %}>Force on</option>
+                        <option value="off"  {% if config.book_hyphenate == "off"  %}selected{% endif %}>Force off</option>
+                    </select>
+                </div>
+                <div class="field" style="margin-top:14px">
+                    <label class="lbl">Dummy Titlepage</label>
+                    <select name="book_dummy_titlepage" id="book_dummy_titlepage">
+                        <option value="auto" {% if config.book_dummy_titlepage == "auto" %}selected{% endif %}>Auto (kepubify decides)</option>
+                        <option value="on"   {% if config.book_dummy_titlepage == "on"   %}selected{% endif %}>Force on</option>
+                        <option value="off"  {% if config.book_dummy_titlepage == "off"  %}selected{% endif %}>Force off</option>
+                    </select>
+                </div>
+                <p class="note">Auto lets kepubify apply its own heuristic. Force on fixes layout problems on the first page of some books.</p>
+            </div>
+            <div>
+                <div class="field">
+                    <label class="lbl">Custom CSS</label>
+                    <textarea name="book_css" rows="3" placeholder="e.g. p { text-indent: 1em; }">{{ config.book_css }}</textarea>
+                </div>
+                <div class="field" style="margin-top:14px">
+                    <label class="lbl">Find and Replace</label>
+                    <textarea name="book_replace" rows="3" placeholder="One rule per line&#10;format: find|replace">{{ config.book_replace }}</textarea>
+                </div>
+                <div class="field" style="margin-top:14px">
+                    <label class="lbl">Charset Override</label>
+                    <input type="text" name="book_charset"
+                           placeholder="Blank for utf-8, or auto to detect"
+                           value="{{ config.book_charset }}">
+                </div>
+                <p class="note">Custom CSS is appended to every book. Replacement rules run on each HTML file; lines without a <code>|</code> separator are ignored.</p>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -1090,7 +1160,7 @@
                 '</code> convert with these settings. Books and everything else keep the Main settings. ' +
                 '<button type="button" class="prof-del" onclick="askDeleteProfile()">Delete profile</button>';
         } else if (names.length) {
-            note.textContent = 'Drops in Comics_in and Books_in convert with these settings. Profiles override the KCC settings for their own folder.';
+            note.textContent = 'Drops in Comics_in convert with these settings. Profiles override the KCC settings for their own folder; Books_in has its own card.';
         } else {
             note.textContent = '';
         }
