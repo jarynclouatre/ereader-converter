@@ -695,6 +695,45 @@ def _strip_leading_dash(filepath: str, job_id: str) -> str:
     return safe
 
 
+def _build_kepubify_cmd(config: ConfigDict, filepath: str, temp_out: str) -> list[str]:
+    """Build the kepubify argument list from the Books settings.
+
+    kepubify's own output extension is .kepub.epub, and --calibre switches it
+    to .kepub. A plain .epub is not something kepubify can emit, so it is asked
+    for .kepub here and renamed on the way out by move_output_file.
+    """
+    cmd = ['kepubify', '--inplace', '--output', temp_out]
+
+    if config.get('book_extension', 'kepub') in ('kepub', 'epub'):
+        cmd.append('--calibre')
+
+    if config.get('book_smarten_punctuation'): cmd.append('--smarten-punctuation')
+    if config.get('book_fullscreen_fixes'):    cmd.append('--fullscreen-reading-fixes')
+
+    hyphenate = config.get('book_hyphenate', 'auto')
+    if hyphenate == 'on':  cmd.append('--hyphenate')
+    if hyphenate == 'off': cmd.append('--no-hyphenate')
+
+    titlepage = config.get('book_dummy_titlepage', 'auto')
+    if titlepage == 'on':  cmd.append('--add-dummy-titlepage')
+    if titlepage == 'off': cmd.append('--no-add-dummy-titlepage')
+
+    # = form, so values starting with a dash don't read as options
+    css = str(config.get('book_css', '')).strip()
+    if css:
+        cmd.append('--css=' + css)
+    for line in str(config.get('book_replace', '')).splitlines():
+        line = line.strip()
+        if '|' in line:
+            cmd.append('--replace=' + line)
+    charset = str(config.get('book_charset', '')).strip()
+    if charset:
+        cmd.append('--charset=' + charset)
+
+    cmd.append(filepath)
+    return cmd
+
+
 def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
     """Convert a single file, tracking state in the job registry."""
     short    = os.path.basename(filepath)[:40]
@@ -734,7 +773,7 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
 
         if c_type == 'book':
             log(f">>> STARTING: kepubify on {short}")
-            cmd = ['kepubify', '--calibre', '--inplace', '--output', temp_out, filepath]
+            cmd = _build_kepubify_cmd(config, filepath, temp_out)
             _run_conversion(cmd, short)
 
         else:
@@ -752,7 +791,8 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
             mode = config.get('originals', 'delete') if c_type == 'comic' else 'delete'
             if mode == 'keep':
                 _discard_previous_outputs(filepath)
-            dests = [move_output_file(f, target_dir) for f in produced]
+            book_ext = config.get('book_extension', 'kepub') if c_type == 'book' else None
+            dests = [move_output_file(f, target_dir, book_ext) for f in produced]
             if os.path.exists(filepath):
                 if mode == 'keep':
                     _mark_converted(filepath, dests)

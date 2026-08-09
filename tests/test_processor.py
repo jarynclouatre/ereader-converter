@@ -175,6 +175,136 @@ def test_build_kcc_cmd_comicinfo_reads_metadata_not_filename(tmp_path):
     assert cmd[cmd.index('--metadatatitle') + 1] == '1'
     assert not any(a.startswith('--title=') for a in cmd)
 
+# ── Books (kepubify) ──────────────────────────────────────────────────────────
+
+def test_build_kepubify_cmd_basic(tmp_path):
+    config = dict(DEFAULT_CONFIG)
+    filepath = str(tmp_path / 'Book.epub')
+    cmd = processor._build_kepubify_cmd(config, filepath, '/tmp/out')
+    assert cmd[0] == 'kepubify'
+    assert '--inplace' in cmd
+    assert cmd[cmd.index('--output') + 1] == '/tmp/out'
+    assert cmd[-1] == filepath
+
+
+@pytest.mark.parametrize('extension, calibre_flag', [
+    ('kepub',      True),   # kepubify emits .kepub with --calibre
+    ('epub',       True),   # emit .kepub, then renamed on the way out
+    ('kepub.epub', False),  # kepubify's own default
+])
+def test_build_kepubify_cmd_extension_maps_to_calibre_flag(tmp_path, extension, calibre_flag):
+    config = dict(DEFAULT_CONFIG)
+    config['book_extension'] = extension
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert ('--calibre' in cmd) is calibre_flag
+
+
+@pytest.mark.parametrize('key, value, flag, present', [
+    ('book_smarten_punctuation', True,  '--smarten-punctuation',      True),
+    ('book_smarten_punctuation', False, '--smarten-punctuation',      False),
+    ('book_fullscreen_fixes',    True,  '--fullscreen-reading-fixes', True),
+    ('book_hyphenate',           'on',  '--hyphenate',                True),
+    ('book_hyphenate',           'off', '--no-hyphenate',             True),
+    ('book_hyphenate',           'auto','--hyphenate',                False),
+    ('book_dummy_titlepage',     'on',  '--add-dummy-titlepage',      True),
+    ('book_dummy_titlepage',     'off', '--no-add-dummy-titlepage',   True),
+    ('book_dummy_titlepage',     'auto','--add-dummy-titlepage',      False),
+])
+def test_build_kepubify_cmd_flag_mappings(tmp_path, key, value, flag, present):
+    config = dict(DEFAULT_CONFIG)
+    config[key] = value
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert (flag in cmd) is present
+
+
+def test_build_kepubify_cmd_free_text_uses_equals_form(tmp_path):
+    """Values starting with a dash must not read as options to kepubify."""
+    config = dict(DEFAULT_CONFIG)
+    config['book_css']     = '-p { margin: 0; }'
+    config['book_charset'] = 'auto'
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert '--css=-p { margin: 0; }' in cmd
+    assert '--charset=auto' in cmd
+
+
+def test_build_kepubify_cmd_replace_repeats_per_line(tmp_path):
+    config = dict(DEFAULT_CONFIG)
+    config['book_replace'] = 'foo|bar\nbaz|qux'
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert cmd.count('--replace=foo|bar') == 1
+    assert cmd.count('--replace=baz|qux') == 1
+
+
+def test_build_kepubify_cmd_omits_empty_free_text(tmp_path):
+    config = dict(DEFAULT_CONFIG)
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    assert not any(a.startswith('--css') for a in cmd)
+    assert not any(a.startswith('--charset') for a in cmd)
+    assert not any(a.startswith('--replace') for a in cmd)
+
+
+@pytest.mark.parametrize('extension, kepubify_writes, expected_output', [
+    ('kepub',      'Book.kepub',      'Book.kepub'),
+    ('kepub.epub', 'Book.kepub.epub', 'Book.kepub.epub'),
+    ('epub',       'Book.kepub',      'Book.epub'),
+])
+def test_process_file_book_honours_extension(tmp_path, extension,
+                                             kepubify_writes, expected_output):
+    books_in  = tmp_path / 'books_in'
+    books_out = tmp_path / 'books_out'
+    books_in.mkdir()
+    src = books_in / 'Book.epub'
+    src.write_bytes(b'x' * 100)
+
+    config = dict(DEFAULT_CONFIG)
+    config['book_extension'] = extension
+
+    def fake_run(cmd, short):
+        out = cmd[cmd.index('--output') + 1]
+        os.makedirs(out, exist_ok=True)
+        with open(os.path.join(out, kepubify_writes), 'wb') as f:
+            f.write(b'y' * 50)
+
+    with patch.object(processor, 'BOOKS_IN', str(books_in)), \
+         patch.object(processor, 'BOOKS_OUT', str(books_out)), \
+         patch.object(processor, 'JOBS_FILE', str(tmp_path / 'jobs.json')), \
+         patch.object(processor, 'STATS_FILE', str(tmp_path / 'stats.json')), \
+         patch('processor.load_config', return_value=config), \
+         patch('processor.wait_for_file_ready', return_value=True), \
+         patch('processor._run_conversion', side_effect=fake_run):
+        processor.process_file(str(src), 'book')
+
+    assert os.listdir(books_out) == [expected_output]
+
+
+def test_process_file_comic_still_produces_kepub(tmp_path):
+    """Regression: the Books settings must not touch comic output."""
+    comics_in  = tmp_path / 'comics_in'
+    comics_out = tmp_path / 'comics_out'
+    comics_in.mkdir()
+    src = comics_in / 'Comic.cbz'
+    src.write_bytes(b'x' * 100)
+
+    config = dict(DEFAULT_CONFIG)
+    config['book_extension'] = 'epub'   # must be ignored for comics
+
+    def fake_run(cmd, short):
+        out = cmd[cmd.index('--output') + 1]
+        os.makedirs(out, exist_ok=True)
+        with open(os.path.join(out, 'Comic.kepub.epub'), 'wb') as f:
+            f.write(b'y' * 50)
+
+    with patch.object(processor, 'COMICS_IN', str(comics_in)), \
+         patch.object(processor, 'COMICS_OUT', str(comics_out)), \
+         patch.object(processor, 'JOBS_FILE', str(tmp_path / 'jobs.json')), \
+         patch.object(processor, 'STATS_FILE', str(tmp_path / 'stats.json')), \
+         patch('processor.load_config', return_value=config), \
+         patch('processor.wait_for_file_ready', return_value=True), \
+         patch('processor._run_conversion', side_effect=fake_run):
+        processor.process_file(str(src), 'comic')
+
+    assert os.listdir(comics_out) == ['Comic.kepub']
+
 def test_process_file_conversion_error(tmp_path):
     comics_in = tmp_path / 'comics_in'
     comics_in.mkdir()
