@@ -305,6 +305,39 @@ def test_process_file_book_honours_extension(tmp_path, extension,
     assert os.listdir(books_out) == [expected_output]
 
 
+def test_process_file_book_logs_cmd(tmp_path):
+    """The book branch must log its command just like the comic branch does,
+    so a failing book conversion leaves something to debug from."""
+    books_in  = tmp_path / 'books_in'
+    books_out = tmp_path / 'books_out'
+    books_in.mkdir()
+    src = books_in / 'Book.epub'
+    src.write_bytes(b'x' * 100)
+
+    config = dict(DEFAULT_CONFIG)
+
+    def fake_run(cmd, short):
+        out = cmd[cmd.index('--output') + 1]
+        os.makedirs(out, exist_ok=True)
+        with open(os.path.join(out, 'Book.kepub'), 'wb') as f:
+            f.write(b'y' * 50)
+
+    logged = []
+    with patch.object(processor, 'BOOKS_IN', str(books_in)), \
+         patch.object(processor, 'BOOKS_OUT', str(books_out)), \
+         patch.object(processor, 'JOBS_FILE', str(tmp_path / 'jobs.json')), \
+         patch.object(processor, 'STATS_FILE', str(tmp_path / 'stats.json')), \
+         patch('processor.load_config', return_value=config), \
+         patch('processor.wait_for_file_ready', return_value=True), \
+         patch('processor._run_conversion', side_effect=fake_run), \
+         patch('processor.log', side_effect=logged.append):
+        processor.process_file(str(src), 'book')
+
+    cmd_lines = [line for line in logged if line.startswith('>>> CMD:')]
+    assert len(cmd_lines) == 1
+    assert 'kepubify' in cmd_lines[0]
+
+
 def test_process_file_comic_still_produces_kepub(tmp_path):
     """Regression: the Books settings must not touch comic output."""
     comics_in  = tmp_path / 'comics_in'

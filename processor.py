@@ -781,6 +781,7 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
         if c_type == 'book':
             log(f">>> STARTING: kepubify on {short}")
             cmd = _build_kepubify_cmd(config, filepath, temp_out)
+            log(f">>> CMD: {' '.join(cmd)}")
             _run_conversion(cmd, short)
 
         else:
