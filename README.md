@@ -154,6 +154,23 @@ When **Device Profile** is set to **Generic / Custom**, width and height fields 
 
 ---
 
+## Books Settings
+
+Books dropped into `Books_in` are converted by [kepubify](https://github.com/pgaskin/kepubify), which has its own settings card in the WebUI. KCC settings and device profiles are a comics feature and never affect books.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Output Extension | `.kepub` | `.kepub` is what Calibre and Calibre-Web-Automated expect when ingesting. `.kepub.epub` is what a Kobo recognises when you copy books to it over USB. `.epub` leaves the converted file looking like an ordinary EPUB. |
+| Smarten Punctuation | off | Converts straight quotes and dashes to typographic ones, leaving `pre` and `code` blocks alone. |
+| Hyphenation | `Auto` | Force hyphenation on or off instead of leaving the book as it is. |
+| Dummy Titlepage | `Auto` | Auto uses kepubify's heuristic. Force on fixes layout problems on the first page of some books. |
+| Fullscreen Reading Fixes | off | Works around Kobo layout bugs on books built around full-page images. |
+| Custom CSS | *(blank)* | Appended to every converted book. |
+| Find and Replace | *(blank)* | One `find\|replace` rule per line, applied to each HTML file in the book. Lines without a separator are ignored, because kepubify aborts the whole conversion on a malformed rule. |
+| Charset Override | *(blank)* | Blank uses utf-8. Set `auto` to detect the charset from the content. |
+
+---
+
 ## Bindery Settings
 
 | Setting | Default | Notes |

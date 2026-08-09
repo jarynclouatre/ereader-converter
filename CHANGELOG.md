@@ -1,3 +1,14 @@
+## Unreleased: Books Conversion Settings
+
+### Added
+
+- **Books settings card**: everything dropped into `Books_in` now has its own settings card in the WebUI, exposing kepubify's conversion options: output extension, smarten punctuation, hyphenation, dummy titlepage, fullscreen reading fixes, custom CSS, find and replace, and charset override. Previously every one of these was hardcoded.
+- **Output extension for books**: choose `.kepub` (the default, and what Calibre and Calibre-Web-Automated expect), `.kepub.epub` (what a Kobo recognises when you copy books to it over USB), or plain `.epub`.
+
+### Fixed
+
+- **No KEPUB Extension no longer looks like it applies to books.** The setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
+
 ## v4.2.1: Keep-in-Place Fixes
 
 Two bugs surfaced by the follow-up on issue #13, both hitting libraries where `Comics_in` and `Comics_out` share a folder with a library manager.
