@@ -77,6 +77,24 @@ def _validate_post(config: ConfigDict) -> ConfigDict:
     if config.get('originals') not in ('delete', 'archive', 'keep'):
         config['originals'] = 'delete'
 
+    _VALID_BOOK_EXT = {'kepub', 'kepub.epub', 'epub'}
+    _VALID_TRISTATE = {'auto', 'on', 'off'}
+
+    if config.get('book_extension')       not in _VALID_BOOK_EXT: config['book_extension']       = 'kepub'
+    if config.get('book_hyphenate')       not in _VALID_TRISTATE: config['book_hyphenate']       = 'auto'
+    if config.get('book_dummy_titlepage') not in _VALID_TRISTATE: config['book_dummy_titlepage'] = 'auto'
+
+    charset = str(config.get('book_charset', '')).strip()
+    config['book_charset'] = charset if re.fullmatch(r'[A-Za-z0-9_.:-]{0,40}', charset) else ''
+
+    # kepubify wants find|replace. A rule without a separator makes it exit 1
+    # and produce nothing, so one bad line would fail every book conversion.
+    config['book_replace'] = '\n'.join(
+        line.strip() for line in str(config.get('book_replace', '')).splitlines()
+        if '|' in line)
+
+    config['book_css'] = str(config.get('book_css', ''))[:10000]
+
     config['apprise_urls'] = config.get('apprise_urls', '')
 
     return config
@@ -279,7 +297,9 @@ def create_app(start_threads: bool = True) -> Flask:
         if request.method == 'POST':
             for key in ('kcc_profile', 'kcc_format', 'kcc_cropping', 'kcc_croppingpower',
                         'kcc_croppingminimum', 'kcc_splitter', 'kcc_gamma', 'kcc_batchsplit',
-                        'kcc_borders', 'kcc_author', 'kcc_customwidth', 'kcc_customheight'):
+                        'kcc_borders', 'kcc_author', 'kcc_customwidth', 'kcc_customheight',
+                        'book_extension', 'book_hyphenate', 'book_dummy_titlepage',
+                        'book_css', 'book_replace', 'book_charset'):
                 config[key] = request.form.get(key, DEFAULT_CONFIG.get(key, ''))
             for key in ('kcc_manga_style', 'kcc_hq', 'kcc_two_panel', 'kcc_webtoon',
                         'kcc_forcecolor', 'kcc_colorautocontrast', 'kcc_colorcurve',
@@ -287,6 +307,7 @@ def create_app(start_threads: bool = True) -> Flask:
                         'kcc_stretch', 'kcc_upscale', 'kcc_nosplitrotate', 'kcc_rotate',
                         'kcc_metadatatitle', 'kcc_comicinfo', 'kcc_nokepub',
                         'notify_on_success', 'notify_on_failure',
+                        'book_smarten_punctuation', 'book_fullscreen_fixes',
                         'bundle_chapter_folders'):
                 config[key] = key in request.form
             config['file_wait_timeout'] = request.form.get(

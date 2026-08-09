@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 import config as cfg
+from config import DEFAULT_CONFIG
 
 _BASE_FORM = {
     'kcc_profile': 'KPW5', 'kcc_format': 'EPUB', 'kcc_cropping': '2',
@@ -96,6 +97,52 @@ def test_post_defaults_originals_to_delete(client, tmp_path):
     # keep/archive.
     saved, _ = _post(client, tmp_path)
     assert saved['originals'] == 'delete'
+
+
+@pytest.mark.parametrize('field, bad, expected', [
+    ('book_extension',       'mobi',            'kepub'),
+    ('book_extension',       'kepub.epub',      'kepub.epub'),  # valid, passes through
+    ('book_hyphenate',       'sometimes',       'auto'),
+    ('book_dummy_titlepage', 'maybe',           'auto'),
+    ('book_charset',         'utf-8 rm -rf /',  ''),
+    ('book_charset',         'windows-1252',    'windows-1252'),
+])
+def test_validate_post_clamps_book_field(client, tmp_path, field, bad, expected):
+    saved, _ = _post(client, tmp_path, **{field: bad})
+    assert saved[field] == expected
+
+
+def test_book_replace_keeps_only_lines_with_a_separator(client, tmp_path):
+    saved, _ = _post(client, tmp_path,
+                     book_replace='foo|bar\nnope\n  baz|qux  \n')
+    assert saved['book_replace'] == 'foo|bar\nbaz|qux'
+
+
+def test_book_css_is_length_capped(client, tmp_path):
+    saved, _ = _post(client, tmp_path, book_css='a' * 20000)
+    assert len(saved['book_css']) == 10000
+
+
+def test_book_checkboxes_save(client, tmp_path):
+    saved, _ = _post(client, tmp_path,
+                     book_smarten_punctuation='on', book_fullscreen_fixes='on')
+    assert saved['book_smarten_punctuation'] is True
+    assert saved['book_fullscreen_fixes'] is True
+
+
+def test_book_settings_stay_global_while_editing_a_profile(client, tmp_path):
+    """book_ keys are not KCC keys, so they must save globally, not into the profile."""
+    config_file = tmp_path / 'settings.json'
+    config_file.write_text(json.dumps({**DEFAULT_CONFIG, 'profiles': {'kobo': {}}}))
+    with patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
+         patch.object(cfg, 'CONFIG_DIR', str(tmp_path)):
+        resp = client.post('/', data={**_BASE_FORM,
+                                      'editing_profile': 'kobo',
+                                      'book_extension': 'epub'})
+    assert resp.status_code == 200
+    saved = json.loads(config_file.read_text())
+    assert saved['book_extension'] == 'epub'
+    assert 'book_extension' not in saved['profiles']['kobo']
 
 
 def test_validate_post_saves_apprise_url(client, tmp_path):

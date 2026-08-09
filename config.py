@@ -39,6 +39,17 @@ DEFAULT_CONFIG: ConfigDict = {
     'kcc_batchsplit':        '0',
     'kcc_customwidth':       '',
     'kcc_customheight':      '',
+    # Books (kepubify). Deliberately not kcc_-prefixed: KCC_KEYS is derived from
+    # that prefix, so a kcc_ name here would make books device-profile
+    # overridable, and Books_in has no profiles.
+    'book_extension':            'kepub',
+    'book_smarten_punctuation':  False,
+    'book_hyphenate':            'auto',
+    'book_dummy_titlepage':      'auto',
+    'book_fullscreen_fixes':     False,
+    'book_css':                  '',
+    'book_replace':              '',
+    'book_charset':              '',
     'file_wait_timeout':     60,
     'watcher_mode':          'poll',
     'apprise_urls':          '',
