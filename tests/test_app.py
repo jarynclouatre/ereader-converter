@@ -6,6 +6,7 @@ import pytest
 
 import config as cfg
 from config import DEFAULT_CONFIG
+from app import create_app, _validate_post
 
 _BASE_FORM = {
     'kcc_profile': 'KPW5', 'kcc_format': 'EPUB', 'kcc_cropping': '2',
@@ -165,6 +166,37 @@ def test_nokepub_hint_says_comics(client):
     """The KCC checkbox must not read as though it applies to books."""
     resp = client.get('/')
     assert b'Comics only' in resp.data
+
+
+@pytest.mark.parametrize('book_extension, same_folder, should_warn', [
+    ('epub',       True,  True),   # ends in .epub -> rescanned as new input
+    ('kepub.epub', True,  True),   # ditto
+    ('kepub',      True,  False),  # never in BOOK_EXTS -> stable, no warning
+    ('epub',       False, False),  # separate folders -> no loop possible
+])
+def test_create_app_warns_on_shared_book_folder(tmp_path, book_extension, same_folder, should_warn):
+    """Books_in == Books_out was always safe pre-branch because the pipeline
+    only ever emitted .kepub. 'epub' and 'kepub.epub' both still end in
+    .epub, which scan_directories' BOOK_EXTS rescans, so a shared folder now
+    reconverts its own output forever. create_app must warn once at startup
+    (not from scan_directories, which runs every 10s)."""
+    books_in = tmp_path / 'books_in'
+    books_in.mkdir()
+    books_out = books_in if same_folder else tmp_path / 'books_out'
+    if not same_folder:
+        books_out.mkdir()
+
+    config = {**DEFAULT_CONFIG, 'book_extension': book_extension}
+    logged = []
+    with patch('app.BOOKS_IN', str(books_in)), \
+         patch('app.BOOKS_OUT', str(books_out)), \
+         patch('app.load_config', return_value=config), \
+         patch('app.threading'), \
+         patch('app.log', side_effect=logged.append):
+        create_app(start_threads=True)
+
+    warnings = [line for line in logged if line.startswith('>>> WARNING')]
+    assert (len(warnings) == 1) is should_warn
 
 
 def test_validate_post_saves_apprise_url(client, tmp_path):

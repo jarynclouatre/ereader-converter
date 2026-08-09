@@ -772,7 +772,7 @@
                         <option value="epub"       {% if config.book_extension == "epub"       %}selected{% endif %}>.epub (plain)</option>
                     </select>
                 </div>
-                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. Choose <code>.epub</code> to leave the converted file looking like an ordinary EPUB.</p>
+                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. Choose <code>.epub</code> to leave the converted file looking like an ordinary EPUB. Unless this is <code>.kepub</code>, <code>Books_in</code> and <code>Books_out</code> must be different folders &mdash; the other two extensions still end in <code>.epub</code>, so a shared folder rescans its own output as new input and converts it again on every pass.</p>
             </div>
             <div>
                 <div class="checks">

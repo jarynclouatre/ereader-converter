@@ -363,7 +363,23 @@ def create_app(start_threads: bool = True) -> Flask:
         _load_job_registry()
         _load_converted_ledger()
         _load_stats()
-        _mode = load_config().get('watcher_mode', 'poll')
+        _startup_config = load_config()
+        _mode = _startup_config.get('watcher_mode', 'poll')
+
+        # Comics can safely share one folder between _in and _out (see the
+        # Originals "keep" mode), but the pre-existing pipeline only ever
+        # emitted .kepub, which BOOK_EXTS never rescans. Both '.epub' and
+        # '.kepub.epub' output land back in BOOK_EXTS, so a shared folder
+        # would reconvert its own output forever. Warn once at startup only;
+        # scan_directories runs every 10s and would spam this otherwise.
+        _book_ext = _startup_config.get('book_extension', 'kepub')
+        if _book_ext in ('epub', 'kepub.epub') and \
+                os.path.realpath(BOOKS_IN) == os.path.realpath(BOOKS_OUT):
+            log(f">>> WARNING: Books_in and Books_out are the same folder and Output "
+                f"Extension is '.{_book_ext}' — converted books will be rescanned as "
+                f"new input and re-converted on every pass. Set Output Extension to "
+                f".kepub, or point Books_in and Books_out at separate folders.")
+
         if _mode == 'inotify':
             log(">>> Bindery started. Watching /Books_in, /Comics_in, and /Comics_raw via inotify.")
             threading.Thread(target=inotify_watch_loop,     daemon=True).start()
