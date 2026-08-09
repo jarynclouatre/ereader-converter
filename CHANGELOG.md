@@ -10,11 +10,12 @@ Books now have their own conversion controls, with safer output naming and an up
 ### Fixed
 
 - **No KEPUB Extension no longer looks like it applies to books.** The setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
-- **Overlapping book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when `Books_out` is the same folder as `Books_in` or sits anywhere inside it. Bindery now rejects either layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
+- **Overlapping book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when either book folder contains the other. Bindery now rejects every overlapping layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
+- **KCC settings match KCC 11.** The landscape splitter now shows KCC's real Split, Rotate, and Split and rotate modes; obsolete controls that made conversions fail are gone; and KCC's current spread options and Kindle Paperwhite and Scribe profiles are available.
 
 ### Changed
 
-- The Docker image now runs Python 3.13 and KCC 11.0.1, with current runtime libraries and GitHub Actions.
+- The Docker image now runs Python 3.13 and KCC 11.0.1, with current runtime libraries and GitHub Actions. Existing saved KCC settings are migrated to the supported equivalents automatically.
 
 Thanks to @tekgnosis-net for contributing the books settings work in #14.
 
@@ -72,11 +73,11 @@ A small release for anyone who keeps their comics in a library manager: leave th
 
 ## v3.6.0: MozJPEG
 
-KCC's MozJPEG option is now a toggle in the WebUI. Turn it on and the JPEG pages inside the output book get losslessly recompressed with the MozJPEG encoder: identical pixels, smaller files, at the cost of somewhat slower conversion.
+KCC's MozJPEG option is now a toggle in the WebUI. Turn it on and the JPEG pages inside the output book are re-encoded with MozJPEG for smaller files, at the cost of somewhat slower conversion.
 
 ### Added
 
-- MozJPEG toggle under Color and Quality. Passes KCC's `--mozjpeg`, which reoptimises every JPEG page losslessly. Off by default since it slows processing.
+- MozJPEG toggle under Color and Quality. Passes KCC's `--mozjpeg`, which re-encodes JPEG pages with the MozJPEG encoder. Off by default since it slows processing.
 
 Thanks to @Brandyii for the suggestion (#11).
 
