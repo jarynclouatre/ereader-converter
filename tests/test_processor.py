@@ -1,7 +1,7 @@
 import json
 import os
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 import processor
 from config import DEFAULT_CONFIG
@@ -277,6 +277,25 @@ def test_book_output_error_uses_directory_identity(tmp_path):
     config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
     with patch('processor.os.path.samefile', return_value=True):
         assert processor.book_output_error(config, str(books_in), str(books_out))
+
+
+def test_book_output_error_rejects_output_inside_input(tmp_path):
+    books_in = tmp_path / 'library'
+    books_out = books_in / 'converted'
+    books_out.mkdir(parents=True)
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
+    assert processor.book_output_error(config, str(books_in), str(books_out))
+
+
+def test_book_output_error_reads_nested_bind_mounts():
+    mountinfo = (
+        '1 0 252:0 /host/library /Books_in rw - ext4 /dev/root rw\n'
+        '2 0 252:0 /host/library/converted /Books_out rw - ext4 /dev/root rw\n'
+    )
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
+    with patch('processor.os.path.samefile', return_value=False), \
+         patch('builtins.open', mock_open(read_data=mountinfo)):
+        assert processor.book_output_error(config, '/Books_in', '/Books_out')
 
 
 def test_scan_pauses_books_but_keeps_scanning_comics(tmp_path):

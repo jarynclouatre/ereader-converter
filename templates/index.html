@@ -776,7 +776,7 @@
                         <option value="epub"       {% if config.book_extension == "epub"       %}selected{% endif %}>.epub (converted, standard extension)</option>
                     </select>
                 </div>
-                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_in</code> and <code>Books_out</code> must be separate folders. Bindery pauses book conversion if both mounts refer to the same folder.</p>
+                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_out</code> must be outside <code>Books_in</code>. Bindery pauses book conversion if the output is the input folder or anywhere inside it.</p>
             </div>
             <div>
                 <div class="checks">

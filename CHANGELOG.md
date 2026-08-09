@@ -10,7 +10,7 @@ Books now have their own conversion controls, with safer output naming and an up
 ### Fixed
 
 - **No KEPUB Extension no longer looks like it applies to books.** The setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
-- **Shared book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when `Books_in` and `Books_out` point at the same folder. Bindery now rejects that setting in the WebUI and pauses book processing if it finds the same unsafe combination in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
+- **Overlapping book folders fail safely.** Converted `.epub` and `.kepub.epub` files can be picked up as fresh input when `Books_out` is the same folder as `Books_in` or sits anywhere inside it. Bindery now rejects either layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
 
 ### Changed
 

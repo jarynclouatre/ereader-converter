@@ -160,7 +160,7 @@ Books dropped into `Books_in` are converted by [kepubify](https://github.com/pga
 
 | Setting | Default | Notes |
 |---------|---------|-------|
-| Output Extension | `.kepub` | `.kepub` is what Calibre and Calibre-Web-Automated expect when ingesting. `.kepub.epub` is what a Kobo recognises when you copy books to it over USB. `.epub` still contains kepubify's Kobo enhancements; it only gives the converted book a conventional extension. With `.epub` or `.kepub.epub`, `Books_in` and `Books_out` must be separate folders. Bindery pauses book conversion if both mounts refer to the same folder, preventing it from repeatedly converting its own output. |
+| Output Extension | `.kepub` | `.kepub` is what Calibre and Calibre-Web-Automated expect when ingesting. `.kepub.epub` is what a Kobo recognises when you copy books to it over USB. `.epub` still contains kepubify's Kobo enhancements; it only gives the converted book a conventional extension. With `.epub` or `.kepub.epub`, `Books_out` must be outside `Books_in`. Bindery pauses book conversion if the output is the input folder or anywhere inside it, preventing it from repeatedly converting its own output. |
 | Smarten Punctuation | off | Converts straight quotes and dashes to typographic ones, leaving `pre` and `code` blocks alone. |
 | Hyphenation | `Auto` | Force hyphenation on or off instead of leaving the book as it is. |
 | Dummy Titlepage | `Auto` | Auto uses kepubify's heuristic. Force on fixes layout problems on the first page of some books. |

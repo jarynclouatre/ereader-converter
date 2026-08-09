@@ -397,17 +397,82 @@ def _same_directory(first: str, second: str) -> bool:
         return os.path.realpath(first) == os.path.realpath(second)
 
 
+def _path_is_within(path: str, parent: str) -> bool:
+    """Return whether path is parent itself or one of its descendants."""
+    try:
+        return os.path.commonpath((path, parent)) == parent
+    except ValueError:
+        return False
+
+
+def _decode_mount_field(value: str) -> str:
+    """Decode the octal escapes Linux uses in /proc/self/mountinfo paths."""
+    return re.sub(r'\\([0-7]{3})', lambda match: chr(int(match.group(1), 8)), value)
+
+
+def _mount_location(path: str) -> tuple[str, str] | None:
+    """Map a container path to its filesystem device and mount-root location.
+
+    Docker can mount a host folder and one of its children at unrelated paths
+    such as /Books_in and /Books_out. Their container paths do not overlap, but
+    mountinfo retains the underlying relationship needed to detect the loop.
+    """
+    resolved = os.path.realpath(path)
+    best: tuple[str, str, str] | None = None
+    try:
+        with open('/proc/self/mountinfo') as mountinfo:
+            for line in mountinfo:
+                fields = line.partition(' - ')[0].split()
+                if len(fields) < 5:
+                    continue
+                device = fields[2]
+                root = _decode_mount_field(fields[3])
+                mount_point = _decode_mount_field(fields[4])
+                if not _path_is_within(resolved, mount_point):
+                    continue
+                if best is None or len(mount_point) > len(best[2]):
+                    best = (device, root, mount_point)
+    except OSError:
+        return None
+
+    if best is None:
+        return None
+    device, root, mount_point = best
+    relative = os.path.relpath(resolved, mount_point)
+    location = root if relative == '.' else os.path.normpath(os.path.join(root, relative))
+    return device, location
+
+
+def _output_reenters_input(books_in: str, books_out: str) -> bool:
+    """Return whether output is the input folder or is visible anywhere below it."""
+    if _same_directory(books_in, books_out):
+        return True
+
+    input_path = os.path.realpath(books_in)
+    output_path = os.path.realpath(books_out)
+    if _path_is_within(output_path, input_path):
+        return True
+
+    input_mount = _mount_location(input_path)
+    output_mount = _mount_location(output_path)
+    return bool(
+        input_mount and output_mount
+        and input_mount[0] == output_mount[0]
+        and _path_is_within(output_mount[1], input_mount[1])
+    )
+
+
 def book_output_error(config: ConfigDict, books_in: str | None = None,
                       books_out: str | None = None) -> str | None:
     """Explain an unsafe book output loop, or return None when conversion is safe."""
     extension = _book_extension(config)
     if extension not in BOOK_RESCANNED_OUTPUT_EXTS:
         return None
-    if not _same_directory(books_in or BOOKS_IN, books_out or BOOKS_OUT):
+    if not _output_reenters_input(books_in or BOOKS_IN, books_out or BOOKS_OUT):
         return None
     return (f"Book conversion is paused because .{extension} output would be picked up "
-            "again: Books_in and Books_out refer to the same folder. Choose .kepub "
-            "or use separate folders.")
+            "again: Books_out is the same folder as Books_in, or is inside it. "
+            "Choose .kepub or move Books_out outside Books_in.")
 
 
 def retry_file(job_id: str) -> bool:
