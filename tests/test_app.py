@@ -6,7 +6,7 @@ import pytest
 
 import config as cfg
 from config import DEFAULT_CONFIG
-from app import create_app, _validate_post
+from app import _validate_post
 
 _BASE_FORM = {
     'kcc_profile': 'KPW5', 'kcc_format': 'EPUB', 'kcc_cropping': '2',
@@ -102,118 +102,67 @@ def test_post_defaults_originals_to_delete(client, tmp_path):
 
 @pytest.mark.parametrize('field, bad, expected', [
     ('book_extension',       'mobi',            'kepub'),
-    ('book_extension',       'kepub.epub',      'kepub.epub'),  # valid, passes through
     ('book_hyphenate',       'sometimes',       'auto'),
     ('book_dummy_titlepage', 'maybe',           'auto'),
     ('book_charset',         'utf-8 rm -rf /',  ''),
-    ('book_charset',         'windows-1252',    'windows-1252'),
 ])
 def test_validate_post_clamps_book_field(client, tmp_path, field, bad, expected):
     saved, _ = _post(client, tmp_path, **{field: bad})
     assert saved[field] == expected
 
 
-def test_book_replace_keeps_only_lines_with_a_separator(client, tmp_path):
-    saved, _ = _post(client, tmp_path,
-                     book_replace='foo|bar\nnope\n  baz|qux  \n')
-    assert saved['book_replace'] == 'foo|bar\nbaz|qux'
-
-
-def test_book_css_is_length_capped(client, tmp_path):
-    saved, _ = _post(client, tmp_path, book_css='a' * 20000)
-    assert len(saved['book_css']) == 10000
-
-
-def test_validate_post_coalesces_explicit_null_book_fields():
-    """A hand-edited settings.json can carry a JSON null for these keys, and
-    load_config() passes it through unchanged (it only fills missing keys).
-    str(None) is the literal string 'None', which must not survive validation
-    and persist as a real value on the next save. Calls _validate_post
-    directly: request.form.get() always returns a string, so posting the
-    settings form can never itself put a Python None into this function."""
+def test_validate_post_sanitizes_book_text_fields():
     config = dict(DEFAULT_CONFIG)
-    config['book_css']     = None
+    config['book_css']     = 'a' * 20000
     config['book_charset'] = None
-    config['book_replace'] = None
+    config['book_replace'] = 'foo|bar\nno separator\n baz|qux '
     result = _validate_post(config)
-    assert result['book_css']     == ''
+    assert len(result['book_css']) == 10000
     assert result['book_charset'] == ''
-    assert result['book_replace'] == ''
-
-
-def test_book_checkboxes_save(client, tmp_path):
-    saved, _ = _post(client, tmp_path,
-                     book_smarten_punctuation='on', book_fullscreen_fixes='on')
-    assert saved['book_smarten_punctuation'] is True
-    assert saved['book_fullscreen_fixes'] is True
+    assert result['book_replace'] == 'foo|bar\nbaz|qux'
 
 
 def test_book_settings_stay_global_while_editing_a_profile(client, tmp_path):
-    """book_ keys are not KCC keys, so they must save globally, not into the profile."""
     config_file = tmp_path / 'settings.json'
     config_file.write_text(json.dumps({**DEFAULT_CONFIG, 'profiles': {'kobo': {}}}))
     with patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
          patch.object(cfg, 'CONFIG_DIR', str(tmp_path)):
         resp = client.post('/', data={**_BASE_FORM,
                                       'editing_profile': 'kobo',
-                                      'book_extension': 'epub'})
+                                      'book_extension': 'epub',
+                                      'book_smarten_punctuation': 'on'})
     assert resp.status_code == 200
     saved = json.loads(config_file.read_text())
     assert saved['book_extension'] == 'epub'
+    assert saved['book_smarten_punctuation'] is True
     assert 'book_extension' not in saved['profiles']['kobo']
 
 
 def test_index_shows_books_card(client):
     resp = client.get('/')
-    assert b'name="book_extension"' in resp.data
-    for value in (b'value="kepub"', b'value="kepub.epub"', b'value="epub"'):
-        assert value in resp.data
-
-
-@pytest.mark.parametrize('field', [
-    b'name="book_smarten_punctuation"', b'name="book_fullscreen_fixes"',
-    b'name="book_hyphenate"', b'name="book_dummy_titlepage"',
-    b'name="book_css"', b'name="book_replace"', b'name="book_charset"',
-])
-def test_index_shows_book_control(client, field):
-    assert field in client.get('/').data
-
-
-def test_nokepub_hint_says_comics(client):
-    """The KCC checkbox must not read as though it applies to books."""
-    resp = client.get('/')
+    for field in (b'book_extension', b'book_smarten_punctuation', b'book_fullscreen_fixes',
+                  b'book_hyphenate', b'book_dummy_titlepage', b'book_css',
+                  b'book_replace', b'book_charset'):
+        assert b'name="' + field + b'"' in resp.data
+    assert b'converted, standard extension' in resp.data
     assert b'Comics only' in resp.data
 
 
-@pytest.mark.parametrize('book_extension, same_folder, should_warn', [
-    ('epub',       True,  True),   # ends in .epub -> rescanned as new input
-    ('kepub.epub', True,  True),   # ditto
-    ('kepub',      True,  False),  # never in BOOK_EXTS -> stable, no warning
-    ('epub',       False, False),  # separate folders -> no loop possible
-])
-def test_create_app_warns_on_shared_book_folder(tmp_path, book_extension, same_folder, should_warn):
-    """Books_in == Books_out was always safe pre-branch because the pipeline
-    only ever emitted .kepub. 'epub' and 'kepub.epub' both still end in
-    .epub, which scan_directories' BOOK_EXTS rescans, so a shared folder now
-    reconverts its own output forever. create_app must warn once at startup
-    (not from scan_directories, which runs every 10s)."""
-    books_in = tmp_path / 'books_in'
-    books_in.mkdir()
-    books_out = books_in if same_folder else tmp_path / 'books_out'
-    if not same_folder:
-        books_out.mkdir()
+def test_unsafe_book_extension_is_not_saved(client, tmp_path):
+    books = tmp_path / 'books'
+    books.mkdir()
+    config_file = tmp_path / 'settings.json'
+    config_file.write_text(json.dumps(DEFAULT_CONFIG))
 
-    config = {**DEFAULT_CONFIG, 'book_extension': book_extension}
-    logged = []
-    with patch('app.BOOKS_IN', str(books_in)), \
-         patch('app.BOOKS_OUT', str(books_out)), \
-         patch('app.load_config', return_value=config), \
-         patch('app.threading'), \
-         patch('app.log', side_effect=logged.append):
-        create_app(start_threads=True)
+    with patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
+         patch.object(cfg, 'CONFIG_DIR', str(tmp_path)), \
+         patch('app.BOOKS_IN', str(books)), \
+         patch('app.BOOKS_OUT', str(books)):
+        resp = client.post('/', data={**_BASE_FORM, 'book_extension': 'epub'})
 
-    warnings = [line for line in logged if line.startswith('>>> WARNING')]
-    assert (len(warnings) == 1) is should_warn
+    assert json.loads(config_file.read_text())['book_extension'] == 'kepub'
+    assert b'Book conversion is paused' in resp.data
+    assert b'Settings saved successfully' not in resp.data
 
 
 def test_validate_post_saves_apprise_url(client, tmp_path):

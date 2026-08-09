@@ -16,6 +16,7 @@ from processor import (
     JOB_REGISTRY, job_registry_lock, retry_file, STATS, stats_lock,
     BOOK_EXTS, COMIC_EXTS,
     BOOKS_IN, BOOKS_OUT, COMICS_IN, COMICS_OUT,
+    book_output_error,
 )
 from raw_processor import raw_watch_loop, raw_inotify_watch_loop
 
@@ -123,6 +124,7 @@ def create_app(start_threads: bool = True) -> Flask:
             return jsonify({'error': 'no files'}), 400
         profile  = (request.form.get('profile') or '').strip()
         config   = load_config()
+        book_error = book_output_error(config, BOOKS_IN, BOOKS_OUT)
         profiles = config.get('profiles') or {}
         results  = []
         for f in uploads:
@@ -132,6 +134,9 @@ def create_app(start_threads: bool = True) -> Flask:
                 results.append({'name': f.filename or '?', 'error': 'unsupported file type'})
                 continue
             if ext in BOOK_EXTS:
+                if book_error:
+                    results.append({'name': name, 'error': book_error})
+                    continue
                 base = BOOKS_IN
             else:
                 base = os.path.join(COMICS_IN, profile) if profile in profiles else COMICS_IN
@@ -297,6 +302,7 @@ def create_app(start_threads: bool = True) -> Flask:
     def index():
         config = load_config()
         saved  = False
+        settings_error = book_output_error(config, BOOKS_IN, BOOKS_OUT)
         if request.method == 'POST':
             for key in ('kcc_profile', 'kcc_format', 'kcc_cropping', 'kcc_croppingpower',
                         'kcc_croppingminimum', 'kcc_splitter', 'kcc_gamma', 'kcc_batchsplit',
@@ -319,42 +325,46 @@ def create_app(start_threads: bool = True) -> Flask:
             config['originals']     = request.form.get('originals', 'delete')
             config['apprise_urls']  = request.form.get('apprise_urls', '')
             config = _validate_post(config)
+            settings_error = book_output_error(config, BOOKS_IN, BOOKS_OUT)
 
-            # When a device profile is being edited, its KCC values land in the
-            # profile; everything else (watcher, notifications, folder handling)
-            # is shared and saves globally either way.
-            editing = (request.form.get('editing_profile') or '').strip()
-            if editing:
-                # If the profile vanished (deleted in another tab), its KCC
-                # values are dropped rather than written over the main ones.
-                disk     = load_config()
-                profiles = disk.get('profiles') or {}
-                if editing in profiles:
-                    profiles[editing] = {k: config[k] for k in KCC_KEYS if k in config}
-                    disk['profiles']  = profiles
-                for k, v in config.items():
-                    if k not in KCC_KEYS and k != 'profiles':
-                        disk[k] = v
-                config = disk
-            save_config(config)
-            saved = True
-            do_restart = bool(request.form.get('do_restart'))
-            if do_restart:
-                def _shutdown() -> None:
-                    time.sleep(0.8)
-                    os.kill(os.getpid(), signal.SIGTERM)
-                threading.Thread(target=_shutdown, daemon=True).start()
-                with log_lock:
-                    logs = list(LOG_BUFFER)
-                return render_template('index.html', config=config, saved=saved,
-                                       logs=logs, version=VERSION, restarting=True,
-                                       kcc_values={k: config[k] for k in KCC_KEYS},
-                                       profiles=config.get('profiles') or {})
+            if not settings_error:
+                # When a device profile is being edited, its KCC values land in the
+                # profile; everything else (watcher, notifications, folder handling)
+                # is shared and saves globally either way.
+                editing = (request.form.get('editing_profile') or '').strip()
+                if editing:
+                    # If the profile vanished (deleted in another tab), its KCC
+                    # values are dropped rather than written over the main ones.
+                    disk     = load_config()
+                    profiles = disk.get('profiles') or {}
+                    if editing in profiles:
+                        profiles[editing] = {k: config[k] for k in KCC_KEYS if k in config}
+                        disk['profiles']  = profiles
+                    for k, v in config.items():
+                        if k not in KCC_KEYS and k != 'profiles':
+                            disk[k] = v
+                    config = disk
+                save_config(config)
+                saved = True
+                do_restart = bool(request.form.get('do_restart'))
+                if do_restart:
+                    def _shutdown() -> None:
+                        time.sleep(0.8)
+                        os.kill(os.getpid(), signal.SIGTERM)
+                    threading.Thread(target=_shutdown, daemon=True).start()
+                    with log_lock:
+                        logs = list(LOG_BUFFER)
+                    return render_template('index.html', config=config, saved=saved,
+                                           settings_error=None, logs=logs, version=VERSION,
+                                           restarting=True,
+                                           kcc_values={k: config[k] for k in KCC_KEYS},
+                                           profiles=config.get('profiles') or {})
 
         with log_lock:
             logs = list(LOG_BUFFER)
 
-        return render_template('index.html', config=config, saved=saved, logs=logs, version=VERSION,
+        return render_template('index.html', config=config, saved=saved,
+                               settings_error=settings_error, logs=logs, version=VERSION,
                                kcc_values={k: config[k] for k in KCC_KEYS},
                                profiles=config.get('profiles') or {})
 
@@ -369,19 +379,9 @@ def create_app(start_threads: bool = True) -> Flask:
         _startup_config = load_config()
         _mode = _startup_config.get('watcher_mode', 'poll')
 
-        # Comics can safely share one folder between _in and _out (see the
-        # Originals "keep" mode), but the pre-existing pipeline only ever
-        # emitted .kepub, which BOOK_EXTS never rescans. Both '.epub' and
-        # '.kepub.epub' output land back in BOOK_EXTS, so a shared folder
-        # would reconvert its own output forever. Warn once at startup only;
-        # scan_directories runs every 10s and would spam this otherwise.
-        _book_ext = _startup_config.get('book_extension', 'kepub')
-        if _book_ext in ('epub', 'kepub.epub') and \
-                os.path.realpath(BOOKS_IN) == os.path.realpath(BOOKS_OUT):
-            log(f">>> WARNING: Books_in and Books_out are the same folder and Output "
-                f"Extension is '.{_book_ext}' — converted books will be rescanned as "
-                f"new input and re-converted on every pass. Set Output Extension to "
-                f".kepub, or point Books_in and Books_out at separate folders.")
+        _book_error = book_output_error(_startup_config, BOOKS_IN, BOOKS_OUT)
+        if _book_error:
+            log(f">>> BOOK CONVERSION PAUSED: {_book_error}")
 
         if _mode == 'inotify':
             log(">>> Bindery started. Watching /Books_in, /Comics_in, and /Comics_raw via inotify.")

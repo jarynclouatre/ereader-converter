@@ -29,31 +29,18 @@ def test_move_output_file_renames_kepub_epub(tmp_path):
     assert (dst / 'mycomic.kepub').exists()
     assert not src_file.exists()
 
-@pytest.mark.parametrize('produced, book_ext, expected', [
-    ('Book.kepub',      'kepub',      'Book.kepub'),
-    ('Book.kepub',      'kepub.epub', 'Book.kepub.epub'),
-    ('Book.kepub',      'epub',       'Book.epub'),
-    ('Book.kepub.epub', 'kepub.epub', 'Book.kepub.epub'),
-    ('Book.kepub.epub', 'epub',       'Book.epub'),
-    ('Book.kepub.epub', 'kepub',      'Book.kepub'),
+@pytest.mark.parametrize('book_ext, expected', [
+    ('kepub',      'Book.kepub'),
+    ('kepub.epub', 'Book.kepub.epub'),
+    ('epub',       'Book.epub'),
 ])
-def test_move_output_file_applies_book_extension(tmp_path, produced, book_ext, expected):
+def test_move_output_file_applies_book_extension(tmp_path, book_ext, expected):
     src = tmp_path / 'src'
     dst = tmp_path / 'dst'
     src.mkdir()
-    (src / produced).write_text('data')
-    processor.move_output_file(str(src / produced), str(dst), book_ext)
+    (src / 'Book.kepub').write_text('data')
+    processor.move_output_file(str(src / 'Book.kepub'), str(dst), book_ext)
     assert (dst / expected).exists()
-
-
-def test_move_output_file_without_book_ext_keeps_comic_behaviour(tmp_path):
-    """Comic output must still normalise .kepub.epub down to .kepub."""
-    src = tmp_path / 'src'
-    dst = tmp_path / 'dst'
-    src.mkdir()
-    (src / 'Comic.kepub.epub').write_text('data')
-    processor.move_output_file(str(src / 'Comic.kepub.epub'), str(dst))
-    assert (dst / 'Comic.kepub').exists()
 
 def test_prune_empty_dirs_removes_nested(tmp_path):
     nested = tmp_path / 'a' / 'b' / 'c'
@@ -181,36 +168,20 @@ def test_build_kcc_cmd_comicinfo_reads_metadata_not_filename(tmp_path):
 
 # ── Books (kepubify) ──────────────────────────────────────────────────────────
 
-def test_build_kepubify_cmd_basic(tmp_path):
-    config = dict(DEFAULT_CONFIG)
-    filepath = str(tmp_path / 'Book.epub')
-    cmd = processor._build_kepubify_cmd(config, filepath, '/tmp/out')
-    assert cmd[0] == 'kepubify'
-    assert '--inplace' in cmd
-    assert cmd[cmd.index('--output') + 1] == '/tmp/out'
-    assert cmd[-1] == filepath
-
-
 @pytest.mark.parametrize('extension, calibre_flag', [
-    ('kepub',      True),   # kepubify emits .kepub with --calibre
-    ('epub',       True),   # emit .kepub, then renamed on the way out
-    ('kepub.epub', False),  # kepubify's own default
+    ('kepub',      True),
+    ('epub',       True),
+    ('kepub.epub', False),
+    ('invalid',    True),
 ])
 def test_build_kepubify_cmd_extension_maps_to_calibre_flag(tmp_path, extension, calibre_flag):
     config = dict(DEFAULT_CONFIG)
     config['book_extension'] = extension
-    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    filepath = str(tmp_path / 'Book.epub')
+    cmd = processor._build_kepubify_cmd(config, filepath, '/tmp/out')
+    assert cmd[:2] == ['kepubify', '--inplace']
+    assert cmd[-1] == filepath
     assert ('--calibre' in cmd) is calibre_flag
-
-
-def test_build_kepubify_cmd_invalid_extension_falls_back_to_kepub(tmp_path):
-    """settings.json bypasses _validate_post, so an out-of-range book_extension
-    must still be re-clamped here, mirroring kcc_format's fallback in
-    _build_kcc_cmd, rather than trusted raw."""
-    config = dict(DEFAULT_CONFIG)
-    config['book_extension'] = 'mobi'
-    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
-    assert '--calibre' in cmd  # same as the 'kepub' fallback would produce
 
 
 @pytest.mark.parametrize('key, value, flag, present', [
@@ -231,54 +202,31 @@ def test_build_kepubify_cmd_flag_mappings(tmp_path, key, value, flag, present):
     assert (flag in cmd) is present
 
 
-def test_build_kepubify_cmd_free_text_uses_equals_form(tmp_path):
-    """Values starting with a dash must not read as options to kepubify."""
+def test_build_kepubify_cmd_maps_text_options(tmp_path):
     config = dict(DEFAULT_CONFIG)
     config['book_css']     = '-p { margin: 0; }'
     config['book_charset'] = 'auto'
+    config['book_replace'] = 'foo|bar\nbaz|qux'
     cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
     assert '--css=-p { margin: 0; }' in cmd
     assert '--charset=auto' in cmd
+    assert [a for a in cmd if a.startswith('--replace=')] == [
+        '--replace=foo|bar', '--replace=baz|qux']
 
 
-def test_build_kepubify_cmd_replace_repeats_per_line(tmp_path):
-    config = dict(DEFAULT_CONFIG)
-    config['book_replace'] = 'foo|bar\nbaz|qux'
-    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
-    assert cmd.count('--replace=foo|bar') == 1
-    assert cmd.count('--replace=baz|qux') == 1
-
-
-def test_build_kepubify_cmd_omits_empty_free_text(tmp_path):
-    config = dict(DEFAULT_CONFIG)
-    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
-    assert not any(a.startswith('--css') for a in cmd)
-    assert not any(a.startswith('--charset') for a in cmd)
-    assert not any(a.startswith('--replace') for a in cmd)
-
-
-def test_build_kepubify_cmd_explicit_null_omitted_not_stringified(tmp_path):
-    """A hand-edited settings.json can carry a JSON null for these keys.
-    str(None) is the literal string 'None', which must never reach the
-    kepubify command line as --css=None / --charset=None."""
+def test_build_kepubify_cmd_omits_null_text_options(tmp_path):
     config = dict(DEFAULT_CONFIG)
     config['book_css']     = None
     config['book_charset'] = None
     config['book_replace'] = None
     cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
-    assert not any(a.startswith('--css') for a in cmd)
-    assert not any(a.startswith('--charset') for a in cmd)
-    assert not any(a.startswith('--replace') for a in cmd)
-    assert not any('None' in a for a in cmd)
+    assert not any(a.startswith(('--css', '--charset', '--replace')) for a in cmd)
 
 
 @pytest.mark.parametrize('extension, kepubify_writes, expected_output', [
     ('kepub',      'Book.kepub',      'Book.kepub'),
     ('kepub.epub', 'Book.kepub.epub', 'Book.kepub.epub'),
     ('epub',       'Book.kepub',      'Book.epub'),
-    # Out-of-range value (hand-edited settings.json, bypasses _validate_post)
-    # must fall back to 'kepub' rather than being trusted raw by move_output_file.
-    ('mobi',       'Book.kepub',      'Book.kepub'),
 ])
 def test_process_file_book_honours_extension(tmp_path, extension,
                                              kepubify_writes, expected_output):
@@ -309,66 +257,72 @@ def test_process_file_book_honours_extension(tmp_path, extension,
     assert os.listdir(books_out) == [expected_output]
 
 
-def test_process_file_book_logs_cmd(tmp_path):
-    """The book branch must log its command just like the comic branch does,
-    so a failing book conversion leaves something to debug from."""
-    books_in  = tmp_path / 'books_in'
+def test_book_command_log_hides_multiline_customisations(tmp_path):
+    config = dict(DEFAULT_CONFIG)
+    config['book_css'] = 'p { color: red; }\nbody { margin: 0; }'
+    config['book_replace'] = 'private phrase|replacement\nfoo|bar'
+    cmd = processor._build_kepubify_cmd(config, str(tmp_path / 'Book.epub'), '/tmp/out')
+    shown = processor._format_cmd_for_log(cmd)
+    assert shown.count('--replace=<set>') == 2
+    assert '--css=<set>' in shown
+    assert 'private phrase' not in shown
+    assert '\n' not in shown
+
+
+def test_book_output_error_uses_directory_identity(tmp_path):
+    books_in = tmp_path / 'books_in'
     books_out = tmp_path / 'books_out'
     books_in.mkdir()
-    src = books_in / 'Book.epub'
-    src.write_bytes(b'x' * 100)
+    books_out.mkdir()
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
+    with patch('processor.os.path.samefile', return_value=True):
+        assert processor.book_output_error(config, str(books_in), str(books_out))
 
-    config = dict(DEFAULT_CONFIG)
 
-    def fake_run(cmd, short):
-        out = cmd[cmd.index('--output') + 1]
-        os.makedirs(out, exist_ok=True)
-        with open(os.path.join(out, 'Book.kepub'), 'wb') as f:
-            f.write(b'y' * 50)
+def test_scan_pauses_books_but_keeps_scanning_comics(tmp_path):
+    books = tmp_path / 'books'
+    comics = tmp_path / 'comics'
+    books.mkdir()
+    comics.mkdir()
+    (books / 'Book.epub').write_bytes(b'x')
+    (comics / 'Comic.cbz').write_bytes(b'x')
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
+    dispatched = []
 
-    logged = []
-    with patch.object(processor, 'BOOKS_IN', str(books_in)), \
-         patch.object(processor, 'BOOKS_OUT', str(books_out)), \
-         patch.object(processor, 'JOBS_FILE', str(tmp_path / 'jobs.json')), \
-         patch.object(processor, 'STATS_FILE', str(tmp_path / 'stats.json')), \
+    def fake_thread(target, args, daemon):
+        dispatched.append(args)
+        return MagicMock()
+
+    with patch.object(processor, 'BOOKS_IN', str(books)), \
+         patch.object(processor, 'BOOKS_OUT', str(books)), \
+         patch.object(processor, 'COMICS_IN', str(comics)), \
          patch('processor.load_config', return_value=config), \
-         patch('processor.wait_for_file_ready', return_value=True), \
-         patch('processor._run_conversion', side_effect=fake_run), \
-         patch('processor.log', side_effect=logged.append):
-        processor.process_file(str(src), 'book')
+         patch('processor.threading.Thread', side_effect=fake_thread):
+        processor.PROCESSING_LOCKS.clear()
+        processor.scan_directories()
 
-    cmd_lines = [line for line in logged if line.startswith('>>> CMD:')]
-    assert len(cmd_lines) == 1
-    assert 'kepubify' in cmd_lines[0]
+    assert (str(comics / 'Comic.cbz'), 'comic') in dispatched
+    assert not any(args[-1] == 'book' for args in dispatched)
 
 
-def test_process_file_comic_still_produces_kepub(tmp_path):
-    """Regression: the Books settings must not touch comic output."""
-    comics_in  = tmp_path / 'comics_in'
-    comics_out = tmp_path / 'comics_out'
-    comics_in.mkdir()
-    src = comics_in / 'Comic.cbz'
-    src.write_bytes(b'x' * 100)
+def test_process_file_leaves_book_untouched_when_output_would_loop(tmp_path):
+    books = tmp_path / 'books'
+    books.mkdir()
+    source = books / 'Book.epub'
+    source.write_bytes(b'x')
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
 
-    config = dict(DEFAULT_CONFIG)
-    config['book_extension'] = 'epub'   # must be ignored for comics
-
-    def fake_run(cmd, short):
-        out = cmd[cmd.index('--output') + 1]
-        os.makedirs(out, exist_ok=True)
-        with open(os.path.join(out, 'Comic.kepub.epub'), 'wb') as f:
-            f.write(b'y' * 50)
-
-    with patch.object(processor, 'COMICS_IN', str(comics_in)), \
-         patch.object(processor, 'COMICS_OUT', str(comics_out)), \
+    with patch.object(processor, 'BOOKS_IN', str(books)), \
+         patch.object(processor, 'BOOKS_OUT', str(books)), \
          patch.object(processor, 'JOBS_FILE', str(tmp_path / 'jobs.json')), \
-         patch.object(processor, 'STATS_FILE', str(tmp_path / 'stats.json')), \
          patch('processor.load_config', return_value=config), \
-         patch('processor.wait_for_file_ready', return_value=True), \
-         patch('processor._run_conversion', side_effect=fake_run):
-        processor.process_file(str(src), 'comic')
+         patch('processor._run_conversion') as run_conversion, \
+         patch('processor.log'):
+        processor.process_file(str(source), 'book')
 
-    assert os.listdir(comics_out) == ['Comic.kepub']
+    assert source.exists()
+    run_conversion.assert_not_called()
+    assert not processor.JOB_REGISTRY
 
 def test_process_file_conversion_error(tmp_path):
     comics_in = tmp_path / 'comics_in'

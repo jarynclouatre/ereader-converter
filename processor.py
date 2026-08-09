@@ -22,6 +22,8 @@ BOOKS_OUT      = '/Books_out'
 
 BOOK_EXTS  = {'.epub'}
 COMIC_EXTS = {'.cbz', '.cbr', '.zip', '.rar', '.pdf'}
+BOOK_OUTPUT_EXTS = frozenset({'kepub', 'kepub.epub', 'epub'})
+BOOK_RESCANNED_OUTPUT_EXTS = frozenset({'kepub.epub', 'epub'})
 
 # Archive types 7z can extract for chapter bundling. PDFs are deliberately
 # absent: they can't join an image-directory job and always convert alone.
@@ -375,6 +377,39 @@ def _notify(event: str, filename: str, error: str | None = None) -> None:
         log(f'>>> NOTIFY ERROR: {e}')
 
 
+def _book_extension(config: ConfigDict) -> str:
+    """Return a supported book extension, including for hand-edited config."""
+    extension = config.get('book_extension', DEFAULT_CONFIG['book_extension'])
+    if isinstance(extension, str) and extension in BOOK_OUTPUT_EXTS:
+        return extension
+    return DEFAULT_CONFIG['book_extension']
+
+
+def _same_directory(first: str, second: str) -> bool:
+    """Compare directories by identity, with a path fallback before mounts exist.
+
+    samefile is needed for Docker bind mounts: two different container paths can
+    point at the same host directory even though their realpath strings differ.
+    """
+    try:
+        return os.path.samefile(first, second)
+    except (OSError, ValueError):
+        return os.path.realpath(first) == os.path.realpath(second)
+
+
+def book_output_error(config: ConfigDict, books_in: str | None = None,
+                      books_out: str | None = None) -> str | None:
+    """Explain an unsafe book output loop, or return None when conversion is safe."""
+    extension = _book_extension(config)
+    if extension not in BOOK_RESCANNED_OUTPUT_EXTS:
+        return None
+    if not _same_directory(books_in or BOOKS_IN, books_out or BOOKS_OUT):
+        return None
+    return (f"Book conversion is paused because .{extension} output would be picked up "
+            "again: Books_in and Books_out refer to the same folder. Choose .kepub "
+            "or use separate folders.")
+
+
 def retry_file(job_id: str) -> bool:
     """Rename the .failed file back to its original name and re-dispatch it.
 
@@ -383,6 +418,8 @@ def retry_file(job_id: str) -> bool:
     with job_registry_lock:
         job = JOB_REGISTRY.get(job_id)
     if not job or job['state'] != 'failed':
+        return False
+    if job['type'] == 'book' and book_output_error(load_config()):
         return False
     original    = job['filepath']
     failed_path = job.get('failed_path') or (original + '.failed')
@@ -706,9 +743,7 @@ def _build_kepubify_cmd(config: ConfigDict, filepath: str, temp_out: str) -> lis
 
     # settings.json bypasses _validate_post, so re-clamp here too (mirrors
     # kcc_format's fallback in _build_kcc_cmd).
-    book_ext = config.get('book_extension', 'kepub')
-    if book_ext not in ('kepub', 'kepub.epub', 'epub'):
-        book_ext = 'kepub'
+    book_ext = _book_extension(config)
     if book_ext in ('kepub', 'epub'):
         cmd.append('--calibre')
 
@@ -741,6 +776,18 @@ def _build_kepubify_cmd(config: ConfigDict, filepath: str, temp_out: str) -> lis
     return cmd
 
 
+def _format_cmd_for_log(cmd: list[str]) -> str:
+    """Keep converter logs useful without dumping multiline book customisations."""
+    shown = []
+    for arg in cmd:
+        if arg.startswith('--css='):
+            arg = '--css=<set>'
+        elif arg.startswith('--replace='):
+            arg = '--replace=<set>'
+        shown.append(arg.replace('\r', r'\r').replace('\n', r'\n'))
+    return ' '.join(shown)
+
+
 def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
     """Convert a single file, tracking state in the job registry."""
     short    = os.path.basename(filepath)[:40]
@@ -754,6 +801,14 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
             job_id = _register_job(filepath, c_type)
 
         config = _config_for_path(filepath)
+        if c_type == 'book':
+            error = book_output_error(config)
+            if error:
+                log(f">>> SKIP: {short} — {error}")
+                with job_registry_lock:
+                    JOB_REGISTRY.pop(job_id, None)
+                    _save_job_registry()
+                return
         if not wait_for_file_ready(filepath, int(config.get('file_wait_timeout', 60))):
             log(f">>> SKIP (not ready): {short}")
             # Remove job so the next scan creates a fresh one
@@ -781,7 +836,7 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
         if c_type == 'book':
             log(f">>> STARTING: kepubify on {short}")
             cmd = _build_kepubify_cmd(config, filepath, temp_out)
-            log(f">>> CMD: {' '.join(cmd)}")
+            log(f">>> CMD: {_format_cmd_for_log(cmd)}")
             _run_conversion(cmd, short)
 
         else:
@@ -789,7 +844,7 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
             log(f">>> QUEUED: {short}")
             with kcc_semaphore:
                 log(f">>> STARTING: kcc-c2e on {short}")
-                log(f">>> CMD: {' '.join(cmd)}")
+                log(f">>> CMD: {_format_cmd_for_log(cmd)}")
                 _run_conversion(cmd, short)
 
         produced = get_output_files(temp_out)
@@ -801,11 +856,7 @@ def process_file(filepath: str, c_type: str, job_id: str | None = None) -> None:
                 _discard_previous_outputs(filepath)
             book_ext = None
             if c_type == 'book':
-                # settings.json bypasses _validate_post, so re-clamp here too
-                # (mirrors kcc_format's fallback in _build_kcc_cmd).
-                book_ext = config.get('book_extension', 'kepub')
-                if book_ext not in ('kepub', 'kepub.epub', 'epub'):
-                    book_ext = 'kepub'
+                book_ext = _book_extension(config)
             dests = [move_output_file(f, target_dir, book_ext) for f in produced]
             if os.path.exists(filepath):
                 if mode == 'keep':
@@ -1039,16 +1090,18 @@ def _extract_chapter_folder(folderpath: str) -> tuple[str, str]:
 
 
 def scan_directories() -> None:
-    for root, dirs, files in os.walk(BOOKS_IN):
-        dirs[:] = [d for d in dirs if not d.startswith('.') and not d.endswith('.failed')]
-        for f in files:
-            if os.path.splitext(f)[1].lower() in BOOK_EXTS and not f.endswith('.failed'):
-                path = os.path.join(root, f)
-                with lock_mutex:
-                    if path not in PROCESSING_LOCKS:
-                        PROCESSING_LOCKS.add(path)
-                        threading.Thread(target=process_file,
-                                         args=(path, 'book'), daemon=True).start()
+    config = load_config()
+    if not book_output_error(config):
+        for root, dirs, files in os.walk(BOOKS_IN):
+            dirs[:] = [d for d in dirs if not d.startswith('.') and not d.endswith('.failed')]
+            for f in files:
+                if os.path.splitext(f)[1].lower() in BOOK_EXTS and not f.endswith('.failed'):
+                    path = os.path.join(root, f)
+                    with lock_mutex:
+                        if path not in PROCESSING_LOCKS:
+                            PROCESSING_LOCKS.add(path)
+                            threading.Thread(target=process_file,
+                                             args=(path, 'book'), daemon=True).start()
 
     # Comics_in and each device-profile folder inside it are scanned as
     # separate roots: a profile folder is a drop target with its own settings,
@@ -1057,7 +1110,6 @@ def scan_directories() -> None:
     # the per-file walk. KCC rejects nested archives ("No images detected"),
     # so archive folders only bundle via the extraction pre-pass, and only
     # when the user enabled it.
-    config        = load_config()
     profile_names = set(config.get('profiles') or {})
     comic_roots   = [COMICS_IN] + [os.path.join(COMICS_IN, n) for n in sorted(profile_names)
                                    if os.path.isdir(os.path.join(COMICS_IN, n))]
@@ -1142,6 +1194,8 @@ def inotify_watch_loop() -> None:
                 return
             if any(part.startswith('.') or part.endswith('.failed')
                    for part in path.split(os.sep) if part):
+                return
+            if self.c_type == 'book' and book_output_error(load_config()):
                 return
             if self.c_type == 'comic':
                 config = load_config()
