@@ -29,6 +29,32 @@ def test_move_output_file_renames_kepub_epub(tmp_path):
     assert (dst / 'mycomic.kepub').exists()
     assert not src_file.exists()
 
+@pytest.mark.parametrize('produced, book_ext, expected', [
+    ('Book.kepub',      'kepub',      'Book.kepub'),
+    ('Book.kepub',      'kepub.epub', 'Book.kepub.epub'),
+    ('Book.kepub',      'epub',       'Book.epub'),
+    ('Book.kepub.epub', 'kepub.epub', 'Book.kepub.epub'),
+    ('Book.kepub.epub', 'epub',       'Book.epub'),
+    ('Book.kepub.epub', 'kepub',      'Book.kepub'),
+])
+def test_move_output_file_applies_book_extension(tmp_path, produced, book_ext, expected):
+    src = tmp_path / 'src'
+    dst = tmp_path / 'dst'
+    src.mkdir()
+    (src / produced).write_text('data')
+    processor.move_output_file(str(src / produced), str(dst), book_ext)
+    assert (dst / expected).exists()
+
+
+def test_move_output_file_without_book_ext_keeps_comic_behaviour(tmp_path):
+    """Comic output must still normalise .kepub.epub down to .kepub."""
+    src = tmp_path / 'src'
+    dst = tmp_path / 'dst'
+    src.mkdir()
+    (src / 'Comic.kepub.epub').write_text('data')
+    processor.move_output_file(str(src / 'Comic.kepub.epub'), str(dst))
+    assert (dst / 'Comic.kepub').exists()
+
 def test_prune_empty_dirs_removes_nested(tmp_path):
     nested = tmp_path / 'a' / 'b' / 'c'
     nested.mkdir(parents=True)

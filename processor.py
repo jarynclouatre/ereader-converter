@@ -557,11 +557,24 @@ def _rename_failed(path: str) -> str | None:
 _output_move_lock = threading.Lock()
 
 
-def move_output_file(produced_file: str, target_dir: str) -> str:
+def move_output_file(produced_file: str, target_dir: str,
+                     book_ext: str | None = None) -> str:
     """Move a single conversion output to target_dir, applying any needed
-    renaming. Returns the final destination path."""
+    renaming. Returns the final destination path.
+
+    book_ext is the extension the Books settings asked for ('kepub',
+    'kepub.epub' or 'epub'). None means comic output, which keeps KCC's
+    .kepub.epub normalised down to .kepub.
+    """
     filename = os.path.basename(produced_file)
-    if filename.endswith('.kepub.epub'):
+    if book_ext:
+        # Longest suffix first: .kepub.epub also ends with .epub.
+        for suffix in ('.kepub.epub', '.kepub', '.epub'):
+            if filename.endswith(suffix):
+                filename = filename[:-len(suffix)]
+                break
+        filename += '.' + book_ext
+    elif filename.endswith('.kepub.epub'):
         filename = filename[:-len('.kepub.epub')] + '.kepub'
     os.makedirs(target_dir, exist_ok=True)
     # Books convert in parallel; the lock keeps two same-named outputs from
