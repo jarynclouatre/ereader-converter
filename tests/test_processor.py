@@ -287,10 +287,22 @@ def test_book_output_error_rejects_output_inside_input(tmp_path):
     assert processor.book_output_error(config, str(books_in), str(books_out))
 
 
-def test_book_output_error_reads_nested_bind_mounts():
+def test_book_output_error_rejects_input_inside_output(tmp_path):
+    books_out = tmp_path / 'library'
+    books_in = books_out / 'books'
+    books_in.mkdir(parents=True)
+    config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
+    assert processor.book_output_error(config, str(books_in), str(books_out))
+
+
+@pytest.mark.parametrize(('input_root', 'output_root'), [
+    ('/host/library', '/host/library/converted'),
+    ('/host/library/books', '/host/library'),
+])
+def test_book_output_error_reads_overlapping_bind_mounts(input_root, output_root):
     mountinfo = (
-        '1 0 252:0 /host/library /Books_in rw - ext4 /dev/root rw\n'
-        '2 0 252:0 /host/library/converted /Books_out rw - ext4 /dev/root rw\n'
+        f'1 0 252:0 {input_root} /Books_in rw - ext4 /dev/root rw\n'
+        f'2 0 252:0 {output_root} /Books_out rw - ext4 /dev/root rw\n'
     )
     config = {**DEFAULT_CONFIG, 'book_extension': 'epub'}
     with patch('processor.os.path.samefile', return_value=False), \

@@ -444,13 +444,14 @@ def _mount_location(path: str) -> tuple[str, str] | None:
 
 
 def _output_reenters_input(books_in: str, books_out: str) -> bool:
-    """Return whether output is the input folder or is visible anywhere below it."""
+    """Return whether either book folder contains the other."""
     if _same_directory(books_in, books_out):
         return True
 
     input_path = os.path.realpath(books_in)
     output_path = os.path.realpath(books_out)
-    if _path_is_within(output_path, input_path):
+    if (_path_is_within(output_path, input_path)
+            or _path_is_within(input_path, output_path)):
         return True
 
     input_mount = _mount_location(input_path)
@@ -458,7 +459,8 @@ def _output_reenters_input(books_in: str, books_out: str) -> bool:
     return bool(
         input_mount and output_mount
         and input_mount[0] == output_mount[0]
-        and _path_is_within(output_mount[1], input_mount[1])
+        and (_path_is_within(output_mount[1], input_mount[1])
+             or _path_is_within(input_mount[1], output_mount[1]))
     )
 
 
@@ -470,9 +472,9 @@ def book_output_error(config: ConfigDict, books_in: str | None = None,
         return None
     if not _output_reenters_input(books_in or BOOKS_IN, books_out or BOOKS_OUT):
         return None
-    return (f"Book conversion is paused because .{extension} output would be picked up "
-            "again: Books_out is the same folder as Books_in, or is inside it. "
-            "Choose .kepub or move Books_out outside Books_in.")
+    return (f"Book conversion is paused because .{extension} output could be picked up "
+            "again: Books_in and Books_out overlap. Choose .kepub or use two separate "
+            "folders where neither one contains the other.")
 
 
 def retry_file(job_id: str) -> bool:
