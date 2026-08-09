@@ -19,13 +19,13 @@ DEFAULT_CONFIG: ConfigDict = {
     'kcc_borders':           'black',
     'kcc_forcecolor':        True,
     'kcc_colorautocontrast': True,
-    'kcc_colorcurve':        False,
     'kcc_eraserainbow':      False,
     'kcc_mozjpeg':           False,
     'kcc_stretch':           True,
     'kcc_upscale':           False,
-    'kcc_nosplitrotate':     False,
-    'kcc_rotate':            False,
+    'kcc_norotate':          False,
+    'kcc_rotateright':       False,
+    'kcc_rotatefirst':       False,
     'kcc_cropping':          '2',
     'kcc_croppingpower':     '1.0',
     'kcc_croppingminimum':   '0',
@@ -67,6 +67,26 @@ KCC_KEYS = frozenset(k for k in DEFAULT_CONFIG if k.startswith('kcc_'))
 _config_lock = threading.Lock()
 
 
+def _migrate_kcc_options(settings: ConfigDict) -> None:
+    """Translate options from Bindery's obsolete KCC command mapping in place."""
+    legacy_norotate = settings.pop('kcc_nosplitrotate', None)
+    if 'kcc_norotate' not in settings and legacy_norotate is not None:
+        settings['kcc_norotate'] = legacy_norotate is True
+    if legacy_norotate is True:
+        settings['kcc_splitter'] = '1'
+
+    # The old Rotate checkbox promised rotate-only output. KCC now expresses
+    # that through splitter mode 1 rather than a standalone --rotate flag.
+    if settings.pop('kcc_rotate', False) is True:
+        settings['kcc_splitter'] = '1'
+
+    # KCC has no color-curve option. Values 3 and 4 were also never supported
+    # splitter modes; both behaved like mode 2 in the converter.
+    settings.pop('kcc_colorcurve', None)
+    if settings.get('kcc_splitter') in ('3', '4'):
+        settings['kcc_splitter'] = '2'
+
+
 def load_config() -> ConfigDict:
     """Load settings from disk, filling any missing keys from DEFAULT_CONFIG.
 
@@ -83,6 +103,12 @@ def load_config() -> ConfigDict:
                         'originals',
                         'archive' if config['preserve_originals'] else 'delete')
                     del config['preserve_originals']
+                _migrate_kcc_options(config)
+                profiles = config.get('profiles')
+                if isinstance(profiles, dict):
+                    for profile in profiles.values():
+                        if isinstance(profile, dict):
+                            _migrate_kcc_options(profile)
                 for k, v in DEFAULT_CONFIG.items():
                     if k not in config:
                         config[k] = v

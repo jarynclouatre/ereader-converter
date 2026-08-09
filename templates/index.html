@@ -483,14 +483,17 @@
                                 ('KPW','Kindle Paperwhite 1 / 2'),
                                 ('KPW34','Kindle Paperwhite 3 / 4'),
                                 ('KPW5','Kindle Paperwhite 5 / Signature Edition'),
+                                ('KPW6','Kindle Paperwhite 12'),
                                 ('KV','Kindle Voyage'),
-                                ('KO','Kindle Oasis 2 / 3 / Paperwhite 12'),
+                                ('KO','Kindle Oasis 2 / 3'),
                                 ('KCS','Kindle Colorsoft'),
                                 ('KS','Kindle Scribe 1 / 2'),
                                 ('KS3','Kindle Scribe 3'),
                                 ('KSCS','Kindle Scribe Colorsoft'),
                                 ('KS1860','Kindle 1860'),
-                                ('KS1920','Kindle 1920')
+                                ('KS1920','Kindle 1920'),
+                                ('KS1240','Kindle 1240 × 1860'),
+                                ('KS1324','Kindle 1324 × 1986')
                             ] %}
                             <option value="{{ val }}" {% if config.kcc_profile == val %}selected{% endif %}>{{ lbl }}</option>
                             {% endfor %}
@@ -544,8 +547,8 @@
                     <label class="lbl">Batch Split</label>
                     <select name="kcc_batchsplit">
                         <option value="0" {% if config.kcc_batchsplit == '0' %}selected{% endif %}>Disabled</option>
-                        <option value="1" {% if config.kcc_batchsplit == '1' %}selected{% endif %}>Single volume</option>
-                        <option value="2" {% if config.kcc_batchsplit == '2' %}selected{% endif %}>Full batch</option>
+                        <option value="1" {% if config.kcc_batchsplit == '1' %}selected{% endif %}>Automatic</option>
+                        <option value="2" {% if config.kcc_batchsplit == '2' %}selected{% endif %}>One volume per subdirectory</option>
                     </select>
                 </div>
 
@@ -554,7 +557,7 @@
                     <select name="kcc_cropping">
                         <option value="0" {% if config.kcc_cropping == '0' %}selected{% endif %}>Disabled</option>
                         <option value="1" {% if config.kcc_cropping == '1' %}selected{% endif %}>Margins only</option>
-                        <option value="2" {% if config.kcc_cropping == '2' %}selected{% endif %}>Margins and content</option>
+                        <option value="2" {% if config.kcc_cropping == '2' %}selected{% endif %}>Margins and page numbers</option>
                     </select>
                 </div>
 
@@ -566,7 +569,7 @@
                 </div>
 
                 <div class="field">
-                    <label class="lbl">Cropping Minimum (% of page kept)</label>
+                    <label class="lbl">Minimum Crop Area (%)</label>
                     <input type="number" name="kcc_croppingminimum"
                            step="1" min="0" max="100"
                            value="{{ config.kcc_croppingminimum }}">
@@ -575,11 +578,9 @@
                 <div class="field">
                     <label class="lbl">Splitter (Landscape pages)</label>
                     <select name="kcc_splitter">
-                        <option value="0" {% if config.kcc_splitter == '0' %}selected{% endif %}>Disabled</option>
-                        <option value="1" {% if config.kcc_splitter == '1' %}selected{% endif %}>Left then right</option>
-                        <option value="2" {% if config.kcc_splitter == '2' %}selected{% endif %}>Right then left</option>
-                        <option value="3" {% if config.kcc_splitter == '3' %}selected{% endif %}>Left page only</option>
-                        <option value="4" {% if config.kcc_splitter == '4' %}selected{% endif %}>Right page only</option>
+                        <option value="0" {% if config.kcc_splitter == '0' %}selected{% endif %}>Split</option>
+                        <option value="1" {% if config.kcc_splitter == '1' %}selected{% endif %}>Rotate</option>
+                        <option value="2" {% if config.kcc_splitter == '2' %}selected{% endif %}>Split and rotate</option>
                     </select>
                 </div>
 
@@ -613,7 +614,7 @@
                         <input type="checkbox" name="kcc_two_panel" {% if config.kcc_two_panel %}checked{% endif %}>
                         <span>
                             <div class="check-label">Two Panel</div>
-                            <div class="check-hint">Treat landscape pages as two-panel spreads</div>
+                            <div class="check-hint">Show two panels instead of four in Kindle Panel View</div>
                         </span>
                     </label>
                     <label class="check">
@@ -638,17 +639,24 @@
                         </span>
                     </label>
                     <label class="check">
-                        <input type="checkbox" name="kcc_nosplitrotate" {% if config.kcc_nosplitrotate %}checked{% endif %}>
+                        <input type="checkbox" name="kcc_norotate" {% if config.kcc_norotate %}checked{% endif %}>
                         <span>
-                            <div class="check-label">No Split / Rotate</div>
-                            <div class="check-hint">Disable splitting of landscape pages entirely</div>
+                            <div class="check-label">Keep Spreads Unrotated</div>
+                            <div class="check-hint">Preserve wide spread orientation in modes that include a rotated copy</div>
                         </span>
                     </label>
                     <label class="check">
-                        <input type="checkbox" name="kcc_rotate" {% if config.kcc_rotate %}checked{% endif %}>
+                        <input type="checkbox" name="kcc_rotateright" {% if config.kcc_rotateright %}checked{% endif %}>
                         <span>
-                            <div class="check-label">Rotate</div>
-                            <div class="check-hint">Rotate landscape pages instead of splitting them</div>
+                            <div class="check-label">Rotate Right</div>
+                            <div class="check-hint">Rotate spreads clockwise instead of counter-clockwise</div>
+                        </span>
+                    </label>
+                    <label class="check">
+                        <input type="checkbox" name="kcc_rotatefirst" {% if config.kcc_rotatefirst %}checked{% endif %}>
+                        <span>
+                            <div class="check-label">Rotated Copy First</div>
+                            <div class="check-hint">In Split and rotate mode, place the whole spread before its split pages</div>
                         </span>
                     </label>
                 </div>
@@ -657,7 +665,7 @@
                 <div class="field">
                     <label class="lbl">Border Fill</label>
                     <select name="kcc_borders">
-                        <option value="none"  {% if config.kcc_borders == 'none'  %}selected{% endif %}>None</option>
+                        <option value="none"  {% if config.kcc_borders == 'none'  %}selected{% endif %}>Auto</option>
                         <option value="black" {% if config.kcc_borders == 'black' %}selected{% endif %}>Black</option>
                         <option value="white" {% if config.kcc_borders == 'white' %}selected{% endif %}>White</option>
                     </select>
@@ -678,14 +686,7 @@
                         <input type="checkbox" name="kcc_colorautocontrast" {% if config.kcc_colorautocontrast %}checked{% endif %}>
                         <span>
                             <div class="check-label">Auto-Contrast</div>
-                            <div class="check-hint">Automatically boost color image contrast</div>
-                        </span>
-                    </label>
-                    <label class="check">
-                        <input type="checkbox" name="kcc_colorcurve" {% if config.kcc_colorcurve %}checked{% endif %}>
-                        <span>
-                            <div class="check-label">Color Curve</div>
-                            <div class="check-hint">Apply S-curve color correction to images</div>
+                            <div class="check-hint">Extend KCC's automatic contrast adjustment to color pages</div>
                         </span>
                     </label>
                     <label class="check">
@@ -699,14 +700,14 @@
                         <input type="checkbox" name="kcc_hq" {% if config.kcc_hq %}checked{% endif %}>
                         <span>
                             <div class="check-label">High Quality</div>
-                            <div class="check-hint">Slower processing, marginally better image output</div>
+                            <div class="check-hint">Use higher-resolution images for Kindle Panel View magnification</div>
                         </span>
                     </label>
                     <label class="check">
                         <input type="checkbox" name="kcc_mozjpeg" {% if config.kcc_mozjpeg %}checked{% endif %}>
                         <span>
                             <div class="check-label">MozJPEG</div>
-                            <div class="check-hint">Losslessly recompress pages for smaller files, slower processing</div>
+                            <div class="check-hint">Re-encode JPEG pages with MozJPEG for smaller files, slower processing</div>
                         </span>
                     </label>
                 </div>
@@ -776,7 +777,7 @@
                         <option value="epub"       {% if config.book_extension == "epub"       %}selected{% endif %}>.epub (converted, standard extension)</option>
                     </select>
                 </div>
-                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_out</code> must be outside <code>Books_in</code>. Bindery pauses book conversion if the output is the input folder or anywhere inside it.</p>
+                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_in</code> and <code>Books_out</code> must not overlap: neither folder can contain the other. Bindery pauses book conversion if they do.</p>
             </div>
             <div>
                 <div class="checks">

@@ -72,6 +72,7 @@ def test_validate_post_clamps_invalid_choices(client, tmp_path):
 
 @pytest.mark.parametrize('field, bad, expected', [
     ('kcc_format',        'MOBI',            'EPUB'),   # MOBI/KFX dropped in v3.4.0
+    ('kcc_splitter',      '4',               '1'),
     ('file_wait_timeout', '9999',            300),      # numeric clamp to the max
     ('watcher_mode',      'hacked',          'poll'),
     ('originals',         'wipe-everything', 'delete'),
@@ -146,6 +147,22 @@ def test_index_shows_books_card(client):
         assert b'name="' + field + b'"' in resp.data
     assert b'converted, standard extension' in resp.data
     assert b'Comics only' in resp.data
+
+
+@pytest.mark.parametrize('profile', ['KPW6', 'KS1240', 'KS1324'])
+def test_validate_post_accepts_current_kcc_profiles(client, tmp_path, profile):
+    saved, _ = _post(client, tmp_path, kcc_profile=profile)
+    assert saved['kcc_profile'] == profile
+
+
+def test_index_shows_current_kcc_controls(client):
+    resp = client.get('/')
+    for field in (b'kcc_norotate', b'kcc_rotateright', b'kcc_rotatefirst'):
+        assert b'name="' + field + b'"' in resp.data
+    for stale in (b'kcc_colorcurve', b'kcc_nosplitrotate', b'name="kcc_rotate"'):
+        assert stale not in resp.data
+    for profile in (b'KPW6', b'KS1240', b'KS1324'):
+        assert b'value="' + profile + b'"' in resp.data
 
 
 def test_unsafe_book_extension_is_not_saved(client, tmp_path):

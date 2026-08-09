@@ -133,3 +133,31 @@ def test_profile_overrides_inherits_unsaved_keys():
     config['profiles'] = {'old': {'kcc_profile': 'KPW5'}}
     merged = cfg.profile_overrides(config, 'old')
     assert merged['kcc_mozjpeg'] is True
+
+
+def test_load_config_migrates_legacy_kcc_controls(tmp_path):
+    config_file = tmp_path / 'settings.json'
+    config_file.write_text(json.dumps({
+        'kcc_colorcurve': True,
+        'kcc_nosplitrotate': True,
+        'kcc_rotate': True,
+        'kcc_splitter': '4',
+        'profiles': {
+            'old': {
+                'kcc_colorcurve': True,
+                'kcc_nosplitrotate': True,
+                'kcc_rotate': False,
+                'kcc_splitter': '3',
+            },
+        },
+    }))
+    with patch.object(cfg, 'CONFIG_FILE', str(config_file)):
+        result = cfg.load_config()
+
+    assert result['kcc_norotate'] is True
+    assert result['kcc_splitter'] == '1'
+    assert not {'kcc_colorcurve', 'kcc_nosplitrotate', 'kcc_rotate'} & result.keys()
+    profile = result['profiles']['old']
+    assert profile['kcc_norotate'] is True
+    assert profile['kcc_splitter'] == '1'
+    assert not {'kcc_colorcurve', 'kcc_nosplitrotate', 'kcc_rotate'} & profile.keys()

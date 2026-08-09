@@ -46,8 +46,8 @@ def _validate_post(config: ConfigDict) -> ConfigDict:
     _VALID_BORDERS    = {'none', 'black', 'white'}
     _VALID_GAMMA      = {'0', '0.5', '0.8', '1.0', '1.2', '1.5', '1.8', '2.0', '2.2'}
     _VALID_PROFILE    = {
-        'K1', 'K2', 'K11', 'K34', 'K57', 'K810', 'KDX', 'KPW', 'KPW34', 'KPW5',
-        'KV', 'KO', 'KCS', 'KS', 'KS3', 'KSCS', 'KS1860', 'KS1920',
+        'K1', 'K2', 'K11', 'K34', 'K57', 'K810', 'KDX', 'KPW', 'KPW34', 'KPW5', 'KPW6',
+        'KV', 'KO', 'KCS', 'KS', 'KS3', 'KSCS', 'KS1860', 'KS1920', 'KS1240', 'KS1324',
         'KoMT', 'KoG', 'KoGHD', 'KoA', 'KoAHD', 'KoAH2O', 'KoAO',
         'KoN', 'KoF', 'KoS', 'KoC', 'KoCC', 'KoL', 'KoLC', 'KoE',
         'Rmk1', 'Rmk2', 'RmkPP', 'RmkPPMove', 'OTHER',
@@ -56,7 +56,7 @@ def _validate_post(config: ConfigDict) -> ConfigDict:
     # in this image, so only formats that actually convert are accepted.
     _VALID_FORMAT     = {'EPUB', 'CBZ'}
     _VALID_CROPPING   = {'0', '1', '2'}
-    _VALID_SPLITTER   = {'0', '1', '2', '3', '4'}
+    _VALID_SPLITTER   = {'0', '1', '2'}
     _VALID_BATCHSPLIT = {'0', '1', '2'}
 
     if config['kcc_borders']    not in _VALID_BORDERS:    config['kcc_borders']    = 'black'
@@ -311,9 +311,10 @@ def create_app(start_threads: bool = True) -> Flask:
                         'book_css', 'book_replace', 'book_charset'):
                 config[key] = request.form.get(key, DEFAULT_CONFIG.get(key, ''))
             for key in ('kcc_manga_style', 'kcc_hq', 'kcc_two_panel', 'kcc_webtoon',
-                        'kcc_forcecolor', 'kcc_colorautocontrast', 'kcc_colorcurve',
+                        'kcc_forcecolor', 'kcc_colorautocontrast',
                         'kcc_eraserainbow', 'kcc_mozjpeg',
-                        'kcc_stretch', 'kcc_upscale', 'kcc_nosplitrotate', 'kcc_rotate',
+                        'kcc_stretch', 'kcc_upscale', 'kcc_norotate',
+                        'kcc_rotateright', 'kcc_rotatefirst',
                         'kcc_metadatatitle', 'kcc_comicinfo', 'kcc_nokepub',
                         'notify_on_success', 'notify_on_failure',
                         'book_smarten_punctuation', 'book_fullscreen_fixes',

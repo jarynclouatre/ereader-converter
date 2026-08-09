@@ -166,6 +166,27 @@ def test_build_kcc_cmd_comicinfo_reads_metadata_not_filename(tmp_path):
     assert cmd[cmd.index('--metadatatitle') + 1] == '1'
     assert not any(a.startswith('--title=') for a in cmd)
 
+
+def test_build_kcc_cmd_uses_current_spread_flags(tmp_path):
+    config = dict(DEFAULT_CONFIG)
+    config.update({
+        'kcc_norotate': True,
+        'kcc_rotateright': True,
+        'kcc_rotatefirst': True,
+        'kcc_colorcurve': True,
+    })
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'Spread.cbz'), '/tmp/out')
+    assert '--norotate' in cmd
+    assert '--rotateright' in cmd
+    assert '--rotatefirst' in cmd
+    assert not {'--nosplitrotate', '--rotate', '--colorcurve'} & set(cmd)
+
+
+def test_build_kcc_cmd_clamps_legacy_splitter_value(tmp_path):
+    config = {**DEFAULT_CONFIG, 'kcc_splitter': '4'}
+    cmd = processor._build_kcc_cmd(config, str(tmp_path / 'Spread.cbz'), '/tmp/out')
+    assert cmd[cmd.index('--splitter') + 1] == '2'
+
 # ── Books (kepubify) ──────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize('extension, calibre_flag', [

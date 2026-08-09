@@ -721,11 +721,17 @@ def _build_kcc_cmd(config: ConfigDict, filepath: str, temp_out: str) -> list[str
     except (TypeError, ValueError):
         crop_min = 0.0
 
+    splitter = config.get('kcc_splitter', DEFAULT_CONFIG['kcc_splitter'])
+    if splitter in ('3', '4'):
+        splitter = '2'
+    elif splitter not in ('0', '1', '2'):
+        splitter = DEFAULT_CONFIG['kcc_splitter']
+
     cmd = [
         'kcc-c2e',
         '--profile',         config['kcc_profile'],
         '--format',          fmt,
-        '--splitter',        config['kcc_splitter'],
+        '--splitter',        splitter,
         '--cropping',        config['kcc_cropping'],
         '--croppingpower',   config['kcc_croppingpower'],
         '--croppingminimum', str(crop_min),
@@ -745,13 +751,13 @@ def _build_kcc_cmd(config: ConfigDict, filepath: str, temp_out: str) -> list[str
     if config.get('kcc_borders') == 'white': cmd.append('--whiteborders')
     if config['kcc_forcecolor']:        cmd.append('--forcecolor')
     if config['kcc_colorautocontrast']: cmd.append('--colorautocontrast')
-    if config['kcc_colorcurve']:        cmd.append('--colorcurve')
     if config.get('kcc_eraserainbow'): cmd.append('--eraserainbow')
     if config.get('kcc_mozjpeg'):       cmd.append('--mozjpeg')
     if config['kcc_stretch']:           cmd.append('--stretch')
     if config['kcc_upscale']:           cmd.append('--upscale')
-    if config['kcc_nosplitrotate']:     cmd.append('--nosplitrotate')
-    if config['kcc_rotate']:            cmd.append('--rotate')
+    if config.get('kcc_norotate'):      cmd.append('--norotate')
+    if config.get('kcc_rotateright'):   cmd.append('--rotateright')
+    if config.get('kcc_rotatefirst'):   cmd.append('--rotatefirst')
     if config['kcc_nokepub']:           cmd.append('--nokepub')
 
     # = form, so filenames/authors starting with a dash don't read as options
