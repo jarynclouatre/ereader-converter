@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **An unavailable book extension no longer discards the rest of the page**: with `Books_in` and `Books_out` overlapping, choosing `.epub` or `.kepub.epub` refused the whole save, so anything else changed at the same time went with it: KCC author, custom CSS, notification URLs, watcher mode. The page then redisplayed those values as though they had been saved. Bindery now keeps the output extension it already had, saves everything else, and says which extension it kept and why.
+- **A blocked book extension no longer discards the rest of the page**: with `Books_in` and `Books_out` overlapping, choosing `.epub` or `.kepub.epub` refused the whole save, so anything else changed at the same time went with it: KCC author, custom CSS, notification URLs, watcher mode. The page then redisplayed those values as though they had been saved. Bindery now keeps the output extension it already had, saves everything else, and says which extension it kept and why.
 
 ### Upgrading
 
