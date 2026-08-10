@@ -1,5 +1,7 @@
 ## v4.3.1: Settings Save Fix
 
+A fix for the Books settings card added in v4.3.0, which could drop the rest of your settings when it refused an output extension.
+
 ### Fixed
 
 - **A blocked book extension no longer discards the rest of the page**: with `Books_in` and `Books_out` overlapping, choosing `.epub` or `.kepub.epub` refused the whole save, so anything else changed at the same time went with it: KCC author, custom CSS, notification URLs, watcher mode. The page then redisplayed those values as though they had been saved. Bindery now keeps the output extension it already had, saves everything else, and says which extension it kept and why.
