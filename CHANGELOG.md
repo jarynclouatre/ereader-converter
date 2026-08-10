@@ -1,3 +1,13 @@
+## v4.3.1: Settings Save Fix
+
+### Fixed
+
+- **An unavailable book extension no longer discards the rest of the page**: with `Books_in` and `Books_out` overlapping, choosing `.epub` or `.kepub.epub` refused the whole save, so anything else changed at the same time went with it: KCC author, custom CSS, notification URLs, watcher mode. The page then redisplayed those values as though they had been saved. Bindery now keeps the output extension it already had, saves everything else, and says which extension it kept and why.
+
+### Upgrading
+
+Pull the latest image and restart. Settings are unchanged.
+
 ## v4.3.0: Books Settings & KCC 11
 
 Books now have their own conversion controls, with safer output naming and an updated conversion stack.
@@ -10,7 +20,7 @@ Books now have their own conversion controls, with safer output naming and an up
 ### Fixed
 
 - **No KEPUB Extension no longer looks like it applies to books**: the setting is a KCC option and only ever affected comics, but nothing in the UI said so, so ticking it and dropping an EPUB into `Books_in` looked like a bug. It is now labelled as comics only, and books have their own extension setting.
-- **Overlapping book folders fail safely**: converted `.epub` and `.kepub.epub` files can be picked up as fresh input when either book folder contains the other. Picking one of them in the WebUI while the folders overlap now keeps the safe `.kepub` setting, saves the rest of the page, and says why. A hand-edited config pauses book processing instead, leaving source files untouched rather than converting them repeatedly.
+- **Overlapping book folders fail safely**: converted `.epub` and `.kepub.epub` files can be picked up as fresh input when either book folder contains the other. Bindery now rejects every overlapping layout in the WebUI and pauses book processing if it finds one in a hand-edited config, leaving source files untouched instead of converting them repeatedly.
 - **KCC settings match KCC 11**: the landscape splitter now shows KCC's real Split, Rotate, and Split and rotate modes; obsolete controls that made conversions fail are gone; and KCC's current spread options and Kindle Paperwhite and Scribe profiles are available.
 
 ### Changed
