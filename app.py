@@ -302,8 +302,11 @@ def create_app(start_threads: bool = True) -> Flask:
     def index():
         config = load_config()
         saved  = False
+        kept_extension = None
         settings_error = book_output_error(config, BOOKS_IN, BOOKS_OUT)
         if request.method == 'POST':
+            stored_extension = config.get('book_extension',
+                                          DEFAULT_CONFIG['book_extension'])
             for key in ('kcc_profile', 'kcc_format', 'kcc_cropping', 'kcc_croppingpower',
                         'kcc_croppingminimum', 'kcc_splitter', 'kcc_gamma', 'kcc_batchsplit',
                         'kcc_borders', 'kcc_author', 'kcc_customwidth', 'kcc_customheight',
@@ -326,46 +329,61 @@ def create_app(start_threads: bool = True) -> Flask:
             config['originals']     = request.form.get('originals', 'delete')
             config['apprise_urls']  = request.form.get('apprise_urls', '')
             config = _validate_post(config)
+
+            # One unsafe field must not veto the whole page. Refusing the save
+            # outright dropped every other change in the same submit (author,
+            # CSS, notification URLs) and the form then redisplayed values that
+            # were never written, with the unsaved-changes bar cleared. Keep the
+            # extension that is already stored and save everything else.
+            if book_output_error(config, BOOKS_IN, BOOKS_OUT):
+                config['book_extension'] = stored_extension
+                if book_output_error(config, BOOKS_IN, BOOKS_OUT):
+                    # The stored value is unsafe too, so this config was hand
+                    # edited. .kepub is safe under every layout.
+                    config['book_extension'] = DEFAULT_CONFIG['book_extension']
+                kept_extension = config['book_extension']
+
             settings_error = book_output_error(config, BOOKS_IN, BOOKS_OUT)
 
-            if not settings_error:
-                # When a device profile is being edited, its KCC values land in the
-                # profile; everything else (watcher, notifications, folder handling)
-                # is shared and saves globally either way.
-                editing = (request.form.get('editing_profile') or '').strip()
-                if editing:
-                    # If the profile vanished (deleted in another tab), its KCC
-                    # values are dropped rather than written over the main ones.
-                    disk     = load_config()
-                    profiles = disk.get('profiles') or {}
-                    if editing in profiles:
-                        profiles[editing] = {k: config[k] for k in KCC_KEYS if k in config}
-                        disk['profiles']  = profiles
-                    for k, v in config.items():
-                        if k not in KCC_KEYS and k != 'profiles':
-                            disk[k] = v
-                    config = disk
-                save_config(config)
-                saved = True
-                do_restart = bool(request.form.get('do_restart'))
-                if do_restart:
-                    def _shutdown() -> None:
-                        time.sleep(0.8)
-                        os.kill(os.getpid(), signal.SIGTERM)
-                    threading.Thread(target=_shutdown, daemon=True).start()
-                    with log_lock:
-                        logs = list(LOG_BUFFER)
-                    return render_template('index.html', config=config, saved=saved,
-                                           settings_error=None, logs=logs, version=VERSION,
-                                           restarting=True,
-                                           kcc_values={k: config[k] for k in KCC_KEYS},
-                                           profiles=config.get('profiles') or {})
+            # When a device profile is being edited, its KCC values land in the
+            # profile; everything else (watcher, notifications, folder handling)
+            # is shared and saves globally either way.
+            editing = (request.form.get('editing_profile') or '').strip()
+            if editing:
+                # If the profile vanished (deleted in another tab), its KCC
+                # values are dropped rather than written over the main ones.
+                disk     = load_config()
+                profiles = disk.get('profiles') or {}
+                if editing in profiles:
+                    profiles[editing] = {k: config[k] for k in KCC_KEYS if k in config}
+                    disk['profiles']  = profiles
+                for k, v in config.items():
+                    if k not in KCC_KEYS and k != 'profiles':
+                        disk[k] = v
+                config = disk
+            save_config(config)
+            saved = True
+            do_restart = bool(request.form.get('do_restart'))
+            if do_restart:
+                def _shutdown() -> None:
+                    time.sleep(0.8)
+                    os.kill(os.getpid(), signal.SIGTERM)
+                threading.Thread(target=_shutdown, daemon=True).start()
+                with log_lock:
+                    logs = list(LOG_BUFFER)
+                return render_template('index.html', config=config, saved=saved,
+                                       settings_error=settings_error, logs=logs,
+                                       version=VERSION, restarting=True,
+                                       kept_extension=kept_extension,
+                                       kcc_values={k: config[k] for k in KCC_KEYS},
+                                       profiles=config.get('profiles') or {})
 
         with log_lock:
             logs = list(LOG_BUFFER)
 
         return render_template('index.html', config=config, saved=saved,
                                settings_error=settings_error, logs=logs, version=VERSION,
+                               kept_extension=kept_extension,
                                kcc_values={k: config[k] for k in KCC_KEYS},
                                profiles=config.get('profiles') or {})
 

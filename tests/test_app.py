@@ -165,21 +165,63 @@ def test_index_shows_current_kcc_controls(client):
         assert b'value="' + profile + b'"' in resp.data
 
 
-def test_unsafe_book_extension_is_not_saved(client, tmp_path):
+def _post_overlapping(client, tmp_path, stored, **overrides):
+    """POST with Books_in and Books_out pointing at one folder."""
     books = tmp_path / 'books'
     books.mkdir()
     config_file = tmp_path / 'settings.json'
-    config_file.write_text(json.dumps(DEFAULT_CONFIG))
+    config_file.write_text(json.dumps({**DEFAULT_CONFIG, **stored}))
 
     with patch.object(cfg, 'CONFIG_FILE', str(config_file)), \
          patch.object(cfg, 'CONFIG_DIR', str(tmp_path)), \
          patch('app.BOOKS_IN', str(books)), \
          patch('app.BOOKS_OUT', str(books)):
-        resp = client.post('/', data={**_BASE_FORM, 'book_extension': 'epub'})
+        resp = client.post('/', data={**_BASE_FORM, **overrides})
 
-    assert json.loads(config_file.read_text())['book_extension'] == 'kepub'
-    assert b'Book conversion is paused' in resp.data
+    assert resp.status_code == 200
+    return json.loads(config_file.read_text()), resp
+
+
+def test_unsafe_book_extension_is_not_saved(client, tmp_path):
+    saved, resp = _post_overlapping(client, tmp_path, {}, book_extension='epub')
+
+    assert saved['book_extension'] == 'kepub'
+    assert b'book output extension was left as' in resp.data
     assert b'Settings saved successfully' not in resp.data
+    # Nothing is actually paused: what got saved is the safe extension.
+    assert b'Book conversion is paused' not in resp.data
+
+
+def test_unsafe_book_extension_keeps_the_rest_of_the_save(client, tmp_path):
+    """One bad field used to discard every other change on the page."""
+    saved, _ = _post_overlapping(
+        client, tmp_path, {},
+        book_extension='epub', kcc_author='Someone',
+        book_css='p { color: red; }', apprise_urls='ntfy://server/bindery')
+
+    assert saved['book_extension'] == 'kepub'
+    assert saved['kcc_author']     == 'Someone'
+    assert saved['book_css']       == 'p { color: red; }'
+    assert saved['apprise_urls']   == 'ntfy://server/bindery'
+
+
+def test_unsafe_stored_extension_falls_back_to_kepub(client, tmp_path):
+    """A hand-edited config cannot be kept just because it is what is stored."""
+    saved, resp = _post_overlapping(client, tmp_path, {'book_extension': 'epub'},
+                                    book_extension='kepub.epub',
+                                    kcc_author='Someone')
+
+    assert saved['book_extension'] == 'kepub'
+    assert saved['kcc_author']     == 'Someone'
+    assert b'book output extension was left as' in resp.data
+
+
+def test_safe_book_extension_saves_without_the_notice(client, tmp_path):
+    saved, resp = _post(client, tmp_path, book_extension='epub')
+
+    assert saved['book_extension'] == 'epub'
+    assert b'Settings saved successfully' in resp.data
+    assert b'book output extension was left as' not in resp.data
 
 
 def test_validate_post_saves_apprise_url(client, tmp_path):

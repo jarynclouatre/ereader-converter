@@ -94,6 +94,11 @@
         .alert-error { background: rgba(212, 115, 108, 0.09); border: 1px solid rgba(212, 115, 108, 0.4);
                        color: var(--err); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px;
                        font-size: .88rem; line-height: 1.5; }
+        /* Page-level warning. .alert-warn is the inotify note further down and
+           is hidden until its JS shows it, so it cannot be reused here. */
+        .alert-notice { background: rgba(207, 166, 74, 0.08); border: 1px solid rgba(207, 166, 74, 0.35);
+                        color: var(--warn); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px;
+                        font-size: .88rem; line-height: 1.5; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
         @media (max-width: 760px) { .grid-3 { grid-template-columns: 1fr; } }
         .field { margin-bottom: 14px; }
@@ -372,7 +377,8 @@
         </button>
     </div>
 
-    {% if saved %}<div class="alert">Settings saved successfully.</div>{% endif %}
+    {% if saved and not kept_extension %}<div class="alert">Settings saved successfully.</div>{% endif %}
+    {% if kept_extension %}<div class="alert-notice" role="alert">Settings saved, but the book output extension was left as <code>.{{ kept_extension }}</code>. <code>Books_in</code> and <code>Books_out</code> overlap, so <code>.epub</code> or <code>.kepub.epub</code> output would be picked up again as new input. Point them at separate folders where neither one contains the other, then choose it again.</div>{% endif %}
     {% if settings_error %}<div class="alert-error" role="alert">{{ settings_error }}</div>{% endif %}
 
     <div class="drop-slot" id="drop-slot" tabindex="0" role="button"
@@ -777,7 +783,7 @@
                         <option value="epub"       {% if config.book_extension == "epub"       %}selected{% endif %}>.epub (converted, standard extension)</option>
                     </select>
                 </div>
-                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_in</code> and <code>Books_out</code> must not overlap: neither folder can contain the other. Bindery pauses book conversion if they do.</p>
+                <p class="note">A Kobo recognises <code>.kepub.epub</code> when you copy books to it over USB. Library managers such as Calibre and Calibre-Web-Automated expect <code>.kepub</code>. The <code>.epub</code> option still runs kepubify and contains Kobo enhancements; it only gives the converted book a standard-looking filename. With <code>.epub</code> or <code>.kepub.epub</code>, <code>Books_in</code> and <code>Books_out</code> must not overlap: neither folder can contain the other. Bindery keeps <code>.kepub</code> if you choose one of the others while they overlap, and pauses book conversion if a hand-edited config is already in that state.</p>
             </div>
             <div>
                 <div class="checks">
